@@ -1,9 +1,5 @@
-//
-// Created by sine on 18-7-10.
-//
-
 /********************************************************
-* FILE     : AawantMain.c
+* FILE     : AawantUpgrade.c
 * CONTENT  : 主进程
 *********************************************************/
 #include <stdio.h>
@@ -17,23 +13,36 @@
 #include "AIUComm.h"
 #include "AIEUComm.h"
 #include "AawantData.h"
-#include "curl/curl.h"
 
 #define  CLIENT_SOCKET_NUM  10
 
-
-typedef enum{
-    BEING=0,
-    PAUSE,
-    FAIL,
-    UPDATE
-}UpdateStatus;
-
-
 // 得到设备的各种参数数据
+int Get_Equipment_Data(struct EquipmentRegister_Iot_Data *pData)
+{
+    memset((char *)pData,0,sizeof(struct EquipmentRegister_Iot_Data));
+
+    strcpy(pData->mac,"00:56:17:08:18:0b");
+    strcpy(pData->name,"IOT TEST ROBOT");
+    strcpy(pData->version,"version2");
+    strcpy(pData->wifiSSID,"wifiSSID3");
+    strcpy(pData->wifiPasswd,"wifiPasswd4");
+    strcpy(pData->address_province,"GUANGDONG");
+    strcpy(pData->address_city,"GUANGZHOU");
+    strcpy(pData->address_district,"TIANHE");
+    strcpy(pData->address_street,"LINGHE");
+    strcpy(pData->address_position,"TIYU DONG");
+    strcpy(pData->address_gis,"123.456 789.012");
+    strcpy(pData->address_remained,"TIYU DONG YANGCHENG");
+    strcpy(pData->address_setting_remained,"3304");
+    strcpy(pData->phoneNumber,"12345678901");
+    strcpy(pData->iccid,"iccid1234567890");
+    strcpy(pData->netType,"0");
+
+    return AI_OK;
+}
 
 /********************************************************************
- * NAME         : StartUdpgradeServer
+ * NAME         : StartAawantServer
  * FUNCTION     : 启动主进程
  * PARAMETER    :
  * PROGRAMMER   :
@@ -41,30 +50,32 @@ typedef enum{
  * UPDATE       :
  * MEMO         :
  ********************************************************************/
-
-
-void StartUpgradeServer()
+void StartAawantServer()
 {
     char	sLog[300],sService[30],sClientAddr[20];
     fd_set	readmask;
-    int		server_sock,iot_socket;
+    int		server_sock;
     int     numfds,read_sock,client_sock;
     int     iClientSocketList[CLIENT_SOCKET_NUM],i,nError;
     struct timeval	timeout_select;
 
-    AIcom_GetProfileString((char *)"Config", (char *)"Port", (char *)"NONE",sService, 30, (char *)SYSTEM_INI_FILE);
-    if(strcmp(sService, "NONE") == 0) {
-        printf("Fail to get Port in %s!\n", (char *)SYSTEM_INI_FILE);
+    int     iot_socket;
+    int     alarm_socket;
+
+    char *sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Socket",(char *)CONFIG_FILE);
+    if(sMsg==NULL) {
+        printf("Fail to get Socket in %s!\n", (char *)CONFIG_FILE);
         exit(1);
     };
+    strcpy(sService,sMsg);
 
     sprintf(sLog,"Master Process : AawantServer start successfully!");
     WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
 
     /* 监听网络 */
-    server_sock=AIEU_TCPListenForConnection(sService);
+    server_sock=AIEU_DomainListenForConnection(sService);
     if(server_sock<0) {
-        sprintf(sLog,"Master Process : AIEU_TCPListenForConnection %s error!",sService);
+        sprintf(sLog,"Master Process : AIEU_DomainListenForConnection %s error!",sService);
         WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
         exit(1);
     };
@@ -74,6 +85,7 @@ void StartUpgradeServer()
 
     // 初始化那些需要主动发消息的socket号
     iot_socket = -1;
+    alarm_socket = -1;
 
     memset(iClientSocketList,0,sizeof(int)*CLIENT_SOCKET_NUM);
 
@@ -99,9 +111,9 @@ void StartUpgradeServer()
 
         /* 有新的SOCKET连接 */
         if( FD_ISSET(server_sock, &readmask))	{
-            client_sock=AIEU_TCPDoAccept(server_sock,sClientAddr);
+            client_sock=AIEU_DomainDoAccept(server_sock,sClientAddr);
             if(client_sock<0) {
-                sprintf(sLog,"Master Process : AIEU_TCPDoAccept Error!");
+                sprintf(sLog,"Master Process : AIEU_DomainDoAccept Error!");
                 WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
                 exit(1);
             };
@@ -138,7 +150,68 @@ void StartUpgradeServer()
                 WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
 
                 switch(pHead->iPacketID) {
+                    case PKT_CLIENT_IDENTITY:   // 各进程发给主控进程，标识身份，包头中iRecordNum存放各进程标识值
+                        if(pHead->iRecordNum==IOT_PROCESS_IDENTITY) {
+                            iot_socket = iClientSocketList[i];
+                        };
+                        if(pHead->iRecordNum==ALARM_PROCESS_IDENTITY) {
+                            alarm_socket = iClientSocketList[i];
+                        };
+                        break;
+                    case PKT_ROBOT_BIND_OK:			// 收到绑定成功的消息
+                        // 转发给IOT进程
+                        if(iot_socket>0) {
+                            AAWANTSendPacket(iot_socket,lpInBuffer);
+                        };
+                        break;
+                    case PKT_ROBOT_WIFI_CONNECT:	// 收到WIFI联接成功的消息
+                        // 转发给IOT进程
+                        if(iot_socket>0) {
+                            AAWANTSendPacket(iot_socket,lpInBuffer);
+                        };
+                        break;
+                    case PKT_FACTORY_RESET:			// 恢复出厂设置
 
+                        break;
+                    case PKT_SYSTEM_SHUTDOWN:		// 系统停止
+                        exit(0);
+                    case PRK_GET_DEVICEINFO:		// 得到设备信息
+                    {
+                        struct EquipmentRegister_Iot_Data stData;
+
+                        Get_Equipment_Data(&stData);
+                        AAWANTSendPacket(iClientSocketList[i],PRK_GET_DEVICEINFO,(char *)&stData,sizeof(struct EquipmentRegister_Iot_Data));
+                        break;
+                    };
+                    case PKT_LANGUAGE_CHANGE:		// 语言改变
+                    {
+                        struct LanguageChange_Iot_Data *pData;
+
+                        pData = (struct LanguageChange_Iot_Data *)(lpInBuffer+sizeof(PacketHead));
+                        sprintf(sLog,"Master Process : language is %s",pData->language==1?"普通话":"粤语");
+                        WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
+                    };
+                        break;
+                    case PRK_MEDIA_PLAY_LIST:		// 收到媒体点播列表
+                    {
+
+                    }
+                        break;
+                    case PKT_MEDIA_ON_DEMAND:		// 收到媒体点播消息
+                    {
+                        struct MediaOnDemand_Iot_Data *pData;
+
+                        pData = (struct MediaOnDemand_Iot_Data *)(lpInBuffer+sizeof(PacketHead));
+                        sprintf(sLog,"Master Process : MediaName[%s] Artist[%s] Author[%s] PlayUrl[%s]",pData->mediaName,pData->artist,pData->author,pData->mediaPlayUrl);
+                        WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
+                    };
+                        break;
+                    case PKT_MEDIA_STATUS:			// 收到媒体点播状态消息
+                        // 转发给IOT进程
+                        if(iot_socket>0) {
+                            AAWANTSendPacket(iot_socket,lpInBuffer);
+                        };
+                        break;
                     case PKT_VERSION_UPDATE:		// 收到版本更新包
                     {
                         struct UpdateInfoMsg_Iot_Data *pData;
@@ -148,6 +221,20 @@ void StartUpgradeServer()
                         WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
                     };
                         break;
+                    case PKT_ALARM_SETUP:			// 闹钟设置数据包
+                        // 转发给闹钟进程
+                        if(alarm_socket>0) {
+                            sprintf(sLog,"Master Process : Recv a alarm and send to Alarm Process");
+                            WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
+                            AAWANTSendPacket(alarm_socket,lpInBuffer);
+                        };
+                        break;
+                    case PKT_ALARM_REMIND:			// 闹钟
+                        struct Alarm_Remind_Data *pData;
+                        pData = (struct Alarm_Remind_Data *)(lpInBuffer+sizeof(PacketHead));
+                        sprintf(sLog,"Master Process : Recv a alarm, parameter sTime[%s]sEvent[%s]sAsk[%s]sSentence[%s]",pData->sTime,pData->sEvent,pData->sAsk,pData->sSentence);
+                        WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
+                        break;
                 } /* switch */;
                 free(lpInBuffer);
             }; /* if */
@@ -155,6 +242,7 @@ void StartUpgradeServer()
     }/* while(1) */
     exit(0);
 }
+
 /********************************************************************
  * NAME         : main
  * FUNCTION     : 主函数
@@ -170,17 +258,8 @@ int main(int argc, char *argv[])
     AIcom_ChangeToDaemon();
 
     // 重定向输出
-    //SetTraceFile((char *)"/var",(char *)"MAIN");
+    SetTraceFile((char *)"MAIN",(char *)CONFIG_FILE);
 
-    /* 设置应用服务程序访问路径 */
-    AIcom_SetSystemRunTop((char *)DVLP_DIR);
-
-    /* 检查环境变量 */
-    if(AIcom_GetCurrentPath() == NULL) {
-        printf("Please setup the environment variable %s first!\n",(char *)DVLP_DIR);
-        return(AI_NG);
-    };
-
-    StartUpgradeServer();
+    StartAawantServer();
     return 0;
 }

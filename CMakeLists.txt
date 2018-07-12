@@ -18,6 +18,7 @@ include_directories(include)
 #include_directories(PROC_IOT/src)
 
 
+
 ADD_SUBDIRECTORY(aawant)
 ADD_SUBDIRECTORY(PROC_UPGRADE)
 
