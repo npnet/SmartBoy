@@ -1579,7 +1579,7 @@ int32 Aawant_Resume_Download(DOWNLOAD_PARAM *dl_param, int32 offset,int32 file_s
     double dl_percent = 0;
     int32 try_times = UPGRADE_DOWNLOAD_RESUME_TIMES;
 
-    printf("Trying to resume download from brocken\n");
+    printf("[%s]==>Trying to resume download from brocken\n",__FUNCTION__);
 
     while (try_times--)
     {
@@ -1594,7 +1594,7 @@ int32 Aawant_Resume_Download(DOWNLOAD_PARAM *dl_param, int32 offset,int32 file_s
         }
         requested_size = dl_param->requested_size;
         dl_percent = (double)downloaded_size/(double)requested_size;
-        printf("Download from offset:%d, progress: %0.2f%%\n",downloaded_size + offset, dl_percent*100);
+        printf("[%s]==>Download from offset:%d, progress: %0.2f%%\n",__FUNCTION__,downloaded_size + offset, dl_percent*100);
 
         if (downloaded_size < requested_size)
         {
@@ -1603,7 +1603,7 @@ int32 Aawant_Resume_Download(DOWNLOAD_PARAM *dl_param, int32 offset,int32 file_s
 
             if (CURLE_OK == dl_param->errcode)
             {
-                printf("--------complete download! size:%d-----------\n", dl_param->downloaded_size);
+                printf("[%s]==>complete download! size:%d\n",__FUNCTION__,dl_param->downloaded_size);
                 return 0;
             }
             else
@@ -1611,18 +1611,18 @@ int32 Aawant_Resume_Download(DOWNLOAD_PARAM *dl_param, int32 offset,int32 file_s
                 i4_ret = Aawant_Check_UpgStatus();
                 if (i4_ret)
                 {
-                    printf("check upg status failed, download may be cancelled\n");
+                    printf("[%s]==>check upg status failed, download may be cancelled\n",__FUNCTION__);
                     return -1;
                 }
 
                 if (dl_param->is_request_done)
                 {
-                    printf("--------complete download! size:%d-----------\n", dl_param->downloaded_size);
+                    printf("[%s]==>complete download! size:%d\n",__FUNCTION__, dl_param->downloaded_size);
                     return 0;
                 }
                 else
                 {
-                    printf("Resume download failed, err:%d %s %s, times:%d\n",
+                    printf("[%s]==>Resume download failed, err:%d %s %s, times:%d\n",__FUNCTION__,
                            dl_param->errcode,curl_easy_strerror(dl_param->errcode),dl_param->curl_error_buf, try_times);
                     /* met connection issue, wait 1s and try again */
                     if (CURLE_COULDNT_CONNECT == dl_param->errcode)
@@ -1631,7 +1631,7 @@ int32 Aawant_Resume_Download(DOWNLOAD_PARAM *dl_param, int32 offset,int32 file_s
             }
         }
     }
-    printf("Resume download failed\n");
+    printf("[%s]==>Resume download failed\n",__FUNCTION__);
     return -1;
 }
 
@@ -1686,7 +1686,7 @@ int32 Aawant_Download_From_Offset(DOWNLOAD_PARAM *dl_param, int32 offset, int32 
     }
     else
     {
-        printf("--------complete download! downloaded size:%d-----------\n", dl_param->downloaded_size);
+        printf("[%s:%d]==>complete download! downloaded size:%d\n",__FUNCTION__,__LINE__,dl_param->downloaded_size);
         i4_ret = 0;
     }
 
@@ -1701,7 +1701,7 @@ int32 Aawant_Parse_ZipHeadInfo(const struct zip_header_raw *raw_data, struct zip
     parse_zip_head_info(raw_data, data);
     if (ZIP_HEAD_SIGN != data->sign_head)
     {
-        printf("parse_zip_head_info failed, header signature not match\n");
+        printf("[%s]==>parse_zip_head_info failed, header signature not match\n",__FUNCTION__);
         i4_ret = -1;
     }
 
@@ -1710,6 +1710,7 @@ int32 Aawant_Parse_ZipHeadInfo(const struct zip_header_raw *raw_data, struct zip
 
 int32 Aawant_Request_To_Flash_Data(DOWNLOAD_PARAM *dl_param)
 {
+    printf("%s\n",__FUNCTION__);
 #ifdef ISNEED
     int32 i4_ret = 0;
     UPGRADE_DL_MSG dl_msg;
@@ -1747,7 +1748,7 @@ int32 Aawant_Wait_Data_Flash_Done(DOWNLOAD_PARAM *dl_param, boolean *is_done)
     pthread_mutex_lock(&dl_param->flash_mutex);
     while (!(*is_done))
     {
-        printf("_upgrad_download_wait_data_flash_done\n");
+        printf("[%s]==>wait_data_flash_done\n",__FUNCTION__);
         pthread_cond_wait(&dl_param->flash_cond, &dl_param->flash_mutex);
     }
     pthread_mutex_unlock(&dl_param->flash_mutex);
@@ -1755,7 +1756,7 @@ int32 Aawant_Wait_Data_Flash_Done(DOWNLOAD_PARAM *dl_param, boolean *is_done)
     return i4_ret;
 }
 
-size_t Aawant_Download_Ota_Package_cb(void *ptr, size_t size, size_t nmemb, void *stream)
+size_t Aawant_Download_Ota_Package_CB(void *ptr, size_t size, size_t nmemb, void *stream)
 {
     int32 i4_ret = 0;
     DOWNLOAD_PARAM *dl_param = (DOWNLOAD_PARAM *)stream;
@@ -1870,7 +1871,7 @@ int32 Aawant_Get_Download_ImgHeadInfo(DOWNLOAD_PARAM *dl_param)
     char  img_header[ZIP_HEAD_PRE_SIZE] = {0};
     UPGRADE_IMAGE_INFO *image = NULL;
 
-    i4_ret = Aawant_Download_Curl_init(dl_param, curl, _upgrade_download_ota_package_cb);
+    i4_ret = Aawant_Download_Curl_init(dl_param, curl, Aawant_Download_Ota_Package_CB);
     if (i4_ret)
     {
         printf("[%s:%d]==>curl init failed\n",__FUNCTION__,__LINE__);
@@ -1897,13 +1898,13 @@ int32 Aawant_Get_Download_ImgHeadInfo(DOWNLOAD_PARAM *dl_param)
         if (ZIP_HEAD_SIGN != *(int32*)(&img_header))
         {
             dl_param->img_num = img_index;
-            printf("get img headinfo done! img num:%d\n",img_index);
+            printf("[%s]==>get img headinfo done! img num:%d\n",__FUNCTION__,img_index);
             break;
         }
 
         if (UPGRADE_IMG_NUM <= img_index)
         {
-            printf("request imgs num: %d, we now only support %d images to update\n",img_index + 1, UPGRADE_IMG_NUM);
+            printf("[%s]==>request imgs num: %d, we now only support %d images to update\n",__FUNCTION__,img_index + 1, UPGRADE_IMG_NUM);
             break;
         }
 
@@ -1969,7 +1970,7 @@ int32 Aawant_Reopen_SaveFile(DOWNLOAD_PARAM *dl_param)
     if (dl_param->fp)
     {
         file_size = ftell(dl_param->fp);
-        printf("close update file size: %d\n", file_size);
+        printf("[%s]==>close update file size: %d\n",__FUNCTION__,file_size);
         fclose(dl_param->fp);
         dl_param->fp = NULL;
     }
@@ -1977,7 +1978,7 @@ int32 Aawant_Reopen_SaveFile(DOWNLOAD_PARAM *dl_param)
     i4_ret = Aawant_Make_DestDir(file_path);
     if (i4_ret)
     {
-        printf("_upgrade_download_make_dest_dir failed\n");
+        printf("[%s]==>make_dest_dir failed\n",__FUNCTION__);
         return i4_ret;
     }
 
@@ -1985,11 +1986,11 @@ int32 Aawant_Reopen_SaveFile(DOWNLOAD_PARAM *dl_param)
     {
         if (0 == remove(dl_param->save_path))
         {
-            printf("remove existing %s \n", dl_param->save_path);
+            printf("[%s]==>remove existing %s \n", dl_param->save_path,__FUNCTION__);
         }
         else
         {
-            printf("remove existing %s failed\n", dl_param->save_path);
+            printf("[%s]==>remove existing %s failed\n", dl_param->save_path,__FUNCTION__);
             return -1;
         }
     }
@@ -1997,7 +1998,7 @@ int32 Aawant_Reopen_SaveFile(DOWNLOAD_PARAM *dl_param)
     dl_param->fp = fopen(dl_param->save_path, "wb");
     if (dl_param->fp == NULL)
     {
-        printf("fail to open save file:%s\n", dl_param->save_path);
+        printf("[%s]==>fail to open save file:%s\n", dl_param->save_path,__FUNCTION__);
         return -1;
     }
     return 0;
@@ -2026,7 +2027,7 @@ int32 Aawant_Get_Download_ImgData(DOWNLOAD_PARAM *dl_param)
         return i4_ret;
     }
 
-    Aawant_Download_Curl_init(dl_param, curl, _upgrade_download_ota_package_cb);
+    Aawant_Download_Curl_init(dl_param, curl, Aawant_Download_Ota_Package_CB);
 
     while (img_idx != dl_param->img_num)
     {
@@ -2098,11 +2099,11 @@ void Aawant_Clean_Download_BasicInfo(DOWNLOAD_PARAM *dl_param)
     {
         if (0 == remove(dl_param->save_path))
         {
-            printf("remove existing %s \n", dl_param->save_path);
+            printf("[%s]==>remove existing %s \n", dl_param->save_path,__FUNCTION__);
         }
         else
         {
-            printf("remove existing %s failed\n", dl_param->save_path);
+            printf("[%s]==>remove existing %s failed\n", dl_param->save_path,__FUNCTION__);
         }
     }
 }
@@ -2150,7 +2151,7 @@ int32 Awant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl_param)
     CURL *curl = NULL;
 
     printf("%s:(^_^)\n",__FUNCTION__);
-    Aawant_Download_Curl_init(dl_param, curl,Aawant_Download_Ota_Package_cb );
+    Aawant_Download_Curl_init(dl_param, curl,Aawant_Download_Ota_Package_CB );
 
     Aawant_Download_Param_Reset(dl_param);
 
