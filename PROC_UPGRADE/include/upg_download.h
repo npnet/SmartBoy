@@ -78,6 +78,7 @@ do{                                                                         \
 
 #endif
 
+//#define AAWANT_DEBUG
 #define UPG_TRIGGER_OK                   ((int)    0)        /* OK */
 #define UPG_TRIGGER_FAIL                 ((int)   -1)        /* Something error? */
 #define UPG_TRIGGER_INV_ARG              ((int)   -2)        /* Invalid arguemnt. */
@@ -88,11 +89,12 @@ do{                                                                         \
 #define UPG_MAX_FILE_PATH_LEN       (255)
 #define CURL_DOWNLOAD_TIMEOUT       (10*60)
 
-#define NETWORK_UPGRADE_BASE_URL    "http://192.168.1.100/"
+#define NETWORK_UPGRADE_BASE_URL    "http://192.168.1.118/"
 
+#ifdef AAWANT_DEBUG
 /* for id file download */
 #define UPGRADE_ID_FILE_NAME        "upg_id_file.bin"
-#define UPGRADE_ID_FILE_SAVE_PATH   "/data/misc/"
+#define UPGRADE_ID_FILE_SAVE_PATH   "/home/sine/download"
 #define UPGRADE_ID_FILE_TMP_PATH    "/tmp/"
 
 /* for sectionally package download */
@@ -101,11 +103,30 @@ do{                                                                         \
 
 /* for full update package download */
 #define UPGRADE_FULL_PKG_NAME       "update.zip"
-#define UPGRADE_FULL_PKG_SAVE_PATH  "/data/misc/"
+#define UPGRADE_FULL_PKG_SAVE_PATH  "/home/sine/download"
 
 #define UPGRADE_DOWNLOAD_RESUME_TIMES           (60)        /* try 60 times, about 1 min if connection timeout */
 #define UPGRADE_TRANSFER_FLASH_SIZE             (1<<21)     /*  transfer around 2MB data to upg_app for flashing every times */
 
+
+#else
+/* for id file download */
+#define UPGRADE_ID_FILE_NAME        "upg_id_file.bin"
+#define UPGRADE_ID_FILE_SAVE_PATH   "/tmp/"
+#define UPGRADE_ID_FILE_TMP_PATH    "/tmp/"
+
+/* for sectionally package download */
+#define UPGRADE_OTA_FILE_NAME       "update.bin"
+#define UPGRADE_OTA_FILE_SAVE_PATH  "/tmp/update/"
+
+/* for full update package download */
+#define UPGRADE_FULL_PKG_NAME       "update.zip"
+#define UPGRADE_FULL_PKG_SAVE_PATH  "/tmp/"
+
+#define UPGRADE_DOWNLOAD_RESUME_TIMES           (60)        /* try 60 times, about 1 min if connection timeout */
+#define UPGRADE_TRANSFER_FLASH_SIZE             (1<<21)     /*  transfer around 2MB data to upg_app for flashing every times */
+
+#endif
 typedef enum
 {
     UPDATE_FROM_CARD = 0x00,

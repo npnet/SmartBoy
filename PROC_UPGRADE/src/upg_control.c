@@ -1037,7 +1037,3 @@ void *CallBack(){
 
     }
 }
-int startUpgradeServer()
-{
-
-}

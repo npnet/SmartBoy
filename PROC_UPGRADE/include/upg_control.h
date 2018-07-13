@@ -140,4 +140,6 @@ E_UPG_CONTROL_UPGRADE_STATUS _upg_control_get_upgrade_status(void);
  */
 void Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS status);
 E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void);
+
+int32 createDownloadPthread();
 #endif /* _UPG_CONTROL_H_ */

@@ -3,11 +3,19 @@
 //
 #include <../include/common.h>
 #include <../include/upg_download.h>
+#define Dprintf(x) printf("[%s:%d]x",__FUNCTION__,__LINE__,x)
+//#define Aprintf(x) Dprintf(__FUNCTION__,__LINE__,x)
 
+void test()
+{
+    Dprintf("hello\n");
+}
 int main(){
 #define myurl "http://192.168.1.118/update.bin"
     int a=4;
     int dl_lenth;
+    test();
+    /*
     switch(a) {
         case 1:
             _upgrade_start_download_firmware(UPDATE_FROM_NET,"http://192.168.1.118/update.bin", "/tmp/");
@@ -31,6 +39,6 @@ int main(){
 
 
     }
-
+*/
     //_upgrade_download_param_basic_init()
 }
