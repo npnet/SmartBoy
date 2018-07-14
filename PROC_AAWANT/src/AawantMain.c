@@ -248,6 +248,7 @@ void StartAawantServer() {
                         break;
 
                     case PKT_UPGRADE_FEEDBACK: {
+                        printf("main<==upgrade\n");
                         FROM_UPGRADE_DATA *updata;
                         updata = (FROM_UPGRADE_DATA *) (lpInBuffer + sizeof(PacketHead));
                         printf("get upgrade status code:%d\n",updata->code);
@@ -255,6 +256,7 @@ void StartAawantServer() {
                     }
                     //用做测试
                     case PKT_UPGRADE_CTRL:{
+                        printf("PKT_UPGRADE_CTRL\n");
                         TO_UPGRADE_DATA *upgData;
                         upgData = (TO_UPGRADE_DATA *)(lpInBuffer+sizeof(PacketHead));
                         if(upgData->action==DOWNLOAD_START){
@@ -272,7 +274,9 @@ void StartAawantServer() {
                         } else if(upgData->action==UPGRADE_START){
                             printf("get msg==>upgrade start\n");
                         }
+                        break;
                     }
+
 
                 } /* switch */;
                 free(lpInBuffer);

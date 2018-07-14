@@ -839,9 +839,9 @@ int32 AawantCmd_Call_App_To_Flash_Data(UPGRADE_IMAGE_INFO *imginfo, int32 unflas
     flash_offset = img_info->img_flashed_size;
 
     snprintf(upg_app_cmd, sizeof(upg_app_cmd), "upgrade_app %s %d %d %d", flash_img_name, flash_offset, unflashed_size, is_last_flash_unit);
-    printf("call upg app: %s\n", upg_app_cmd);
+    printf("[%s]==>call upg app: %s\n",__FUNCTION__, upg_app_cmd);
     i4_ret = system(upg_app_cmd);
-    printf("upgrade_app return: %d\n", i4_ret);
+    printf("[%s]==>upgrade_app return: %d\n", i4_ret);
 
     return i4_ret;
 }
@@ -856,10 +856,11 @@ int32 Aawant_Fully_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
     int32 i4_ret = 0;
     char upg_app_cmd[BUF_SIZE_HALF]={0};
 
+
     snprintf(upg_app_cmd, sizeof(upg_app_cmd), "upgrade_app %s", dl_param->save_path);
     printf("call upg app: %s\n", upg_app_cmd);
     i4_ret = system(upg_app_cmd);
-    printf("upgrade_app return: %d\n", i4_ret);
+    printf("[%s]==>upgrade_app return: %d\n",__FUNCTION__,i4_ret);
 
     Aawant_Wakeup_Data_Flash_Done(dl_param, &dl_param->is_request_done);
     return i4_ret;
@@ -888,7 +889,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
             i4_ret = AawantCmd_Call_App_To_Flash_Data(img_info, unflashed_size, is_all_img_flashed);
             if (i4_ret)
             {
-                printf("_upg_control_call_app_to_flash_data failed, cancel download\n");
+                printf("[%s:%d]==>call_app_to_flash_data failed, cancel download\n",__FUNCTION__,__LINE__);
                 Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
                 Aawant_Wakeup_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
                 return i4_ret;
@@ -899,7 +900,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
         }
         else
         {
-            printf("unflash data size %d is less than flash_unit_size %d, skip this time\n",unflashed_size,flash_unit_size);
+            printf("[%s]==>unflash data size %d is less than flash_unit_size %d, skip this time\n",__FUNCTION__,unflashed_size,flash_unit_size);
             return i4_ret;
         }
     }
@@ -911,7 +912,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
         i4_ret = AawantCmd_Call_App_To_Flash_Data(img_info, flash_unit_size, is_all_img_flashed);
         if (i4_ret)
         {
-            printf("AawantCmd_Call_App_To_Flash_Data failed, cancel download\n");
+            printf("[%s]==>Call_App_To_Flash_Data failed, cancel download\n",__FUNCTION__);
             Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
             Aawant_Wakeup_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
             return i4_ret;
@@ -919,7 +920,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
         img_info->img_flashed_size += flash_unit_size;
         Aawant_Wakeup_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
     }
-    printf("img flashed/downloaded/total size:%d/%d/%d \n",
+    printf("[%s]==>img flashed/downloaded/total size:%d/%d/%d \n",__FUNCTION__,
             img_info->img_flashed_size,img_info->img_downloaded_size,img_info->img_header.comp_size);
 
     return i4_ret;
@@ -947,12 +948,12 @@ static void AawantCmd_Flash_Img_Done(void)
         snprintf(cmd_buf, 256, "mv -f %s %s", new_id_file, old_id_file);
         i4_ret = system(cmd_buf);
         if (i4_ret)
-            printf("storage new id file failed\n");
+            printf("[%s]==>storage new id file failed\n",__FUNCTION__);
         else
-            printf("storage new id file to %s\n", old_id_file);
+            printf("[%s]==>storage new id file to %s\n",__FUNCTION__,old_id_file);
     }
 
-    printf("upgrade done! now reboot!\n");
+    printf("[%s]==>upgrade done! now reboot!\n",__FUNCTION__);
 
     Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_DONE);
 
@@ -987,25 +988,38 @@ E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void){
 }
 
 
-void *Do_Download(void *arg){
-    int ret=Aawant_StartDownLoad("http://192.168.1.118/","/home/sine/download",True);
+void *Do_Download(void *dl){
+
+    DOWNLOAD_PARAM *dl_param=(DOWNLOAD_PARAM *)dl;
+    int ret=Aawant_StartDownLoad(dl_param,"http://192.168.1.118/","/home/sine/download",False);
     if (ret)
     {
-        printf("Aawant_StartDownLoad failed\n");
+        printf("[%s]==>failed\n",__FUNCTION__);
         Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_FAILED);
     }
+
+
     return UPG_CONTROL_OK;
 
 }
 
-int32 createDownloadPthread(){
+/**
+ *
+ * @return
+ */
+int32 createDownloadPthread(void *arg){
     pthread_t  dl_ptd;
 
-    int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,NULL);
+    int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,arg);
     if(ret!=0)
     {
-        printf("create pthread fail\n");
+        printf("[%s]==>create pthread fail\n",__FUNCTION__);
+    } else{
+
+            Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_INITED);
+
     }
+
 
     return ret;
 }

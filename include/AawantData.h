@@ -181,6 +181,14 @@ typedef struct TO_UPGRADE_DATA_T{
     char url[URLSIZE];
 }TO_UPGRADE_DATA;
 
+
+typedef enum {
+    DOWNLOAD_SUCESS=0,
+    DOWNLOAD_FAIL,
+    REQUEST_UPGRADE,
+    REQUEST_REBOOT
+};
+
 typedef struct FROM_UPGRADE_DATA_T{
     int status;
     int code;       //1:下载成功 2:

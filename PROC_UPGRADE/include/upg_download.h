@@ -206,6 +206,7 @@ typedef struct AAWANT_DOWNLOAD_PARAM_T{
     char img_num;
     char processing_img_idx;
     UPGRADE_IMAGE_INFO image[UPGRADE_IMG_NUM];
+    int dl_sock;
 }DOWNLOAD_PARAM;
 
 #ifdef ISNEED
@@ -237,6 +238,6 @@ char* _upgrade_get_server_url(const char *url);
 //-------------
 double _upgrade_get_download_file_lenth(CURL *handle, const char *url);
 int32 Aawant_Wakeup_Data_Flash_Done(DOWNLOAD_PARAM *dl_param, boolean *is_done);
-int32 Aawant_StartDownLoad(char *g_url,char *save_path,boolean is_full_pkg);
+int32 Aawant_StartDownLoad(DOWNLOAD_PARAM *dl,char *g_url,char *save_path,boolean is_full_pkg);
 
 #endif /* _UPG_TRIGGER_H_ */

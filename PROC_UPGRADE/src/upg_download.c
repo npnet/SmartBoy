@@ -43,11 +43,14 @@
 #include <sys/prctl.h>
 #include <sys/statfs.h>
 #include <malloc.h>
+#include <AIUComm.h>
 
 //#include "u_appman.h"
 //#include "u_app_thread.h"
 #include "upg_download.h"
 #include "curl/curl.h"
+#include "AIEUComm.h"
+#include "AawantData.h"
 
 #define BUF_SIZE_ENTRIE 256
 #define BUF_SIZE_HALF 128
@@ -1710,7 +1713,7 @@ int32 Aawant_Parse_ZipHeadInfo(const struct zip_header_raw *raw_data, struct zip
 
 int32 Aawant_Request_To_Flash_Data(DOWNLOAD_PARAM *dl_param)
 {
-    printf("%s\n",__FUNCTION__);
+    printf("[%s]==>\n",__FUNCTION__);
 #ifdef ISNEED
     int32 i4_ret = 0;
     UPGRADE_DL_MSG dl_msg;
@@ -1723,6 +1726,16 @@ int32 Aawant_Request_To_Flash_Data(DOWNLOAD_PARAM *dl_param)
 
     return i4_ret;
 #endif
+
+
+    FROM_UPGRADE_DATA upgradeData;
+
+    upgradeData.status=0;
+    upgradeData.code=0;
+
+    printf("[%s]==>sock=%d\n",__FUNCTION__,dl_param->dl_sock);
+    AAWANTSendPacket(dl_param->dl_sock,PKT_UPGRADE_CTRL,(char *)&upgradeData, sizeof(upgradeData));
+
 }
 
 
@@ -2109,11 +2122,11 @@ void Aawant_Clean_Download_BasicInfo(DOWNLOAD_PARAM *dl_param)
 }
 
 
-int32 Aawwant_Download_OtaPackage(char *url, char *save_path, int32 upg_file_size)
+int32 Aawwant_Download_OtaPackage(DOWNLOAD_PARAM* dl_param,char *url, char *save_path, int32 upg_file_size)
 {
     int32 i4_ret = 0;
     CURL *curl = NULL;
-    DOWNLOAD_PARAM *dl_param = &a_dl_param;
+   // DOWNLOAD_PARAM *dl_param = &a_dl_param;
 
     printf("%s:(-_-)\n",__FUNCTION__);
     i4_ret = Aawant_DownLoad_init(dl_param, url, save_path, upg_file_size, False);
@@ -2191,11 +2204,11 @@ int32 Awant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl_param)
  * @return
  */
 
-int32 Aawant_Download_FullOtaPackage(char *url, char *save_path, int32 upg_file_size)
+int32 Aawant_Download_FullOtaPackage(DOWNLOAD_PARAM* dl_param,char *url, char *save_path, int32 upg_file_size)
 {
     int32 i4_ret = 0;
     CURL* curl = NULL;
-    DOWNLOAD_PARAM* dl_param = &a_dl_param;
+    //DOWNLOAD_PARAM* dl_param = &a_dl_param;
 
     i4_ret = Aawant_DownLoad_init(dl_param, url, save_path, upg_file_size, True);
     if (i4_ret)
@@ -2235,7 +2248,10 @@ int32 Aawant_Download_FullOtaPackage(char *url, char *save_path, int32 upg_file_
 }
 
 
-int32 Aawant_Notify_Flash_Done(void)
+
+
+
+int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM *dl)
 {
 #ifdef ISNEED
     int32 i4_ret = 0;
@@ -2251,6 +2267,13 @@ int32 Aawant_Notify_Flash_Done(void)
 
     return i4_ret;
 #endif
+
+    FROM_UPGRADE_DATA upgradeData;
+
+    upgradeData.status=0;
+    upgradeData.code=0;
+
+    AAWANTSendPacket(dl->dl_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
 }
 
 
@@ -2260,12 +2283,12 @@ int32 Aawant_Notify_Flash_Done(void)
  * @param save_path
  * @return
  */
-int32 Aawant_StartDownLoad(char *g_url,char *save_path,boolean is_full_pkg){
+int32 Aawant_StartDownLoad(DOWNLOAD_PARAM *dl,char *g_url,char *save_path,boolean is_full_pkg){
     int ret;
     if (is_full_pkg)
     {
 
-        ret = Aawwant_Download_OtaPackage(g_url,UPGRADE_OTA_FILE_SAVE_PATH,0);
+        ret = Aawwant_Download_OtaPackage(dl,g_url,UPGRADE_OTA_FILE_SAVE_PATH,0);
         if (ret)
         {
             printf("[%s]==>Download OtaPackage failed\n",__FUNCTION__);
@@ -2275,14 +2298,14 @@ int32 Aawant_StartDownLoad(char *g_url,char *save_path,boolean is_full_pkg){
     else
     {
 
-        ret = Aawant_Download_FullOtaPackage(g_url,UPGRADE_FULL_PKG_SAVE_PATH,0);
+        ret = Aawant_Download_FullOtaPackage(dl,g_url,UPGRADE_FULL_PKG_SAVE_PATH,0);
         if (ret)
         {
             printf("[%s]==>Download FullOtaPackage failed\n",__FUNCTION__);
             return ret;
         }
     }
-    ret = Aawant_Notify_Flash_Done();
+    ret = Aawant_Notify_Flash_Done(dl);
     if (ret)
     {
         printf("[%s]=Notify Flash Done failed\n",__FUNCTION__);

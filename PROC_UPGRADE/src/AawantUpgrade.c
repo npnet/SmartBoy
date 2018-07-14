@@ -17,6 +17,7 @@
 #include "AIUComm.h"
 #include "cJSON.h"
 #include <upg_control.h>
+#include "upg_download.h"
 
 
 
@@ -38,6 +39,7 @@ int  main(int argc, char *argv[])
     fd_set			readmask;
     struct timeval	timeout_select;
     int             nError;
+    DOWNLOAD_PARAM dl_param;
 
     AIcom_ChangeToDaemon();
 
@@ -59,6 +61,7 @@ int  main(int argc, char *argv[])
         return AI_NG;
     };
 
+    dl_param.dl_sock=server_sock;
     // 把本进程的标识送给主进程
     PacketHead stHead;
     memset((char *)&stHead,0,sizeof(PacketHead));
@@ -88,10 +91,12 @@ int  main(int argc, char *argv[])
             char *lpInBuffer=AAWANTGetPacket(server_sock, &nError);
             if(lpInBuffer==NULL) {
                 if(nError == EINTR ||nError == 0) {  /* 因信号而中断 */
+                    printf("signal interrupt\n");
                     continue;
                 };
                 /* 主进程关闭了联接，本程序也终止！ */
               //  WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
+                printf("close sock\n");
                 AIEU_TCPClose(server_sock);
 
 
@@ -107,10 +112,16 @@ int  main(int argc, char *argv[])
 
                     if(upData->action==DOWNLOAD_START){
                         printf("Upgrade:start download\n");
-                        createDownloadPthread();
+                        createDownloadPthread(&dl_param);
 
                     } else if(upData->action==DOWNLOAD_CONTINUE){
                         printf("Upgrade:continue\n");
+                       // FROM_UPGRADE_DATA upgradeData;
+
+                       // upgradeData.status=0;
+                       // upgradeData.code=0;
+
+                       //  AAWANTSendPacket(read_sock,PKT_UPGRADE_CTRL,(char *)&upgradeData, sizeof(upgradeData));
                     }
                     else if(upData->action==DOWNLOAD_PAUSE){
                         printf("Upgrade:pause\n");
