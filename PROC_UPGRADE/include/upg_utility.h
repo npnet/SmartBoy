@@ -43,6 +43,7 @@
 //#include "u_common.h"
 
 #include "common.h"
+#include "aawant.h"
 
 /*-------------------------------------------------------------------------------------
 					for zip header info -begin
@@ -57,37 +58,7 @@
   *     |------local file1 header------|-- file1 data--|--file1 data descriptor--|--local file2 header--|-- file2 data--|--file2 data descriptor--|--
   *       (row_size+name_len+ext_len)     (comp_size)      	(option)(12B/16B)
   */
-typedef struct zip_header_raw
-{
-	char sign_head[4];
-	char version[2];
-	char gp_bit_flag[2];
-	char comp_method[2];
-	char mod_time[2];
-	char mod_date[2];
-	char crc32[4];
-	char comp_size[4];
-	char uncomp_size[4];
-	char name_length[2];
-	char ext_field_length[2];
-	char file_name;
-}ZIP_HEADER_RAW;
 
-typedef struct zip_header
-{
-	int32   sign_head;
-	int16	version;
-	int16	gp_bit_flag;
-	int16	comp_method;
-	int16	mod_time;
-	int16	mod_date;
-	int32   crc32;
-	int32   comp_size;
-	int32   uncomp_size;
-	int16	name_length;
-	int16	ext_field_length;
-	char	file_name[64];
-}ZIP_HEADER;
 
 /* seems we do not need this desc */
 struct file_descriptor

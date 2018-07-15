@@ -42,6 +42,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <time.h>
+#include <AawantData.h>
+#include <AIUComm.h>
 
 /* application level */
 //#include "u_amb.h"
@@ -979,75 +981,11 @@ int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
 }
 
 void Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS status){
-
+    a_status=status;
 }
 
 
 E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void){
-
+    return a_status;
 }
 
-
-void *Do_Download(void *dl){
-
-    DOWNLOAD_PARAM *dl_param=(DOWNLOAD_PARAM *)dl;
-    int ret=Aawant_StartDownLoad(dl_param,"http://192.168.1.118/","/home/sine/download",False);
-    if (ret)
-    {
-        printf("[%s]==>failed\n",__FUNCTION__);
-        Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_FAILED);
-    }
-
-
-    return UPG_CONTROL_OK;
-
-}
-
-/**
- *
- * @return
- */
-int32 createDownloadPthread(void *arg){
-    pthread_t  dl_ptd;
-
-    int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,arg);
-    if(ret!=0)
-    {
-        printf("[%s]==>create pthread fail\n",__FUNCTION__);
-    } else{
-
-            Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_INITED);
-
-    }
-
-
-    return ret;
-}
-
-/*
-void createDownloadPthread(void *arg){
-
-}
- */
-
-
-void *CallBack(){
-
-    int msg;
-    DOWNLOAD_PARAM *dl_param;
-    switch (msg)
-    {
-        //下载
-        case 1:
-            break;
-        //取消下载
-        case 2:
-
-            break;
-        //烧写
-        case 3:
-            AawantCmd_Flash_ImgData(dl_param);
-            break;
-
-    }
-}

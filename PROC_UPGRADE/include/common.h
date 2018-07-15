@@ -6,6 +6,7 @@
 #define DVLP_COMMON_H
 
 
+#include "curl/curl.h"
 
 typedef unsigned char uchar;
 typedef unsigned char uint8;
@@ -21,7 +22,6 @@ typedef signed long long  int64;
 typedef uint8  boolean;
 #define True  (1)
 #define False (0)
-
 
 
 #ifdef ISNEED
@@ -137,5 +137,6 @@ DBG_LVL_PRINT(DBG_LEVEL_MODULE, DBG_LEVEL_INFO, stat)
 
 extern int dbg_init(void);
 #endif
+
 
 #endif //DVLP_COMMON_H

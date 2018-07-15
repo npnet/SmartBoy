@@ -46,6 +46,9 @@
 //#include "u_appman.h"
 
 #include "common.h"
+#include "aawant.h"
+#include "upg_utility.h"
+//#include "upg_download.h"
 
 
 #undef  DBG_INIT_LEVEL
@@ -103,30 +106,7 @@ typedef struct _UPG_CONTROL_OBJ_T
 /*app private  msg*/
 
 
-/*enum */
-typedef enum
-{
-    E_UPG_CONTROL_UPGRADE_STATUS_INITED = 0,
-    E_UPG_CONTROL_UPGRADE_STATUS_UPGRADING,
-    E_UPG_CONTROL_UPGRADE_STATUS_DONE,
-    E_UPG_CONTROL_UPGRADE_STATUS_FAILED,
-    E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED,
-    E_UPG_CONTROL_UPGRADE_STATUS_MAX
-}E_UPG_CONTROL_UPGRADE_STATUS;
 
-typedef enum
-{
-    E_UPG_CONTROL_CHECK_UPDATE,
-    E_UPG_CONTROL_MSG_MAX
-}E_UPG_CONTROL_TIMER_MSG;
-
-typedef enum
-{
-    E_UPG_CONTROL_DOWNLOAD_FW = 0,
-    E_UPG_CONTROL_FLASH_IMG_DATA,
-    E_UPG_CONTROL_FLASH_IMG_DONE,
-    E_UPG_CONTROL_STATE_MNGR_MSG_MAX
-}E_UPG_CONTROL_MSG_TYPE;
 
 /*------------------------------------------------------------------------------
                                             funcitons declarations
@@ -142,5 +122,6 @@ E_UPG_CONTROL_UPGRADE_STATUS _upg_control_get_upgrade_status(void);
 void Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS status);
 E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void);
 
-int32 createDownloadPthread(void *dl);
+
+//int32 createDownloadPthread(DOWNLOAD_PARAM dl);
 #endif /* _UPG_CONTROL_H_ */
