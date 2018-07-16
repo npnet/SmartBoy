@@ -261,6 +261,7 @@ void StartAawantServer() {
                         upgData = (TO_UPGRADE_DATA *)(lpInBuffer+sizeof(PacketHead));
                         if(upgData->action==DOWNLOAD_START){
                             printf("get msg==>download start\n");
+
                             if(upgrade_socket>0) {
                                 AAWANTSendPacket(upgrade_socket, lpInBuffer);
                             }
@@ -271,9 +272,18 @@ void StartAawantServer() {
                             printf("get msg==>download continue\n");
                         } else if(upgData->action==DOWNLOAD_CANCEL){
                             printf("get msg==>download cancel\n");
+
+                            if(upgrade_socket>0) {
+                                AAWANTSendPacket(upgrade_socket, lpInBuffer);
+                            }
                         } else if(upgData->action==UPGRADE_START){
                             printf("get msg==>upgrade start\n");
+
+                            if(upgrade_socket>0) {
+                                AAWANTSendPacket(upgrade_socket, lpInBuffer);
+                            }
                         }
+
                         break;
                     }
 

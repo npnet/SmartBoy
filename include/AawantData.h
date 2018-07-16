@@ -12,11 +12,11 @@
 #ifndef _AAWANTDATA_H
 #define _AAWANTDATA_H
 
-//#define AAWANT_DEBUG
+#define AAWANT_DEBUG
 #ifdef AAWANT_DEBUG
     #define  CONFIG_FILE  (char *)"/data/aawant.conf"
 #else
-    #define  CONFIG_FILE  (char *)"/home/sin/test/config/aawant.conf"
+    #define  CONFIG_FILE  (char *)"/home/sine/test/config/aawant.conf"
 #endif
 #define  BUFSIZE            512
 #define  ALARM_FIELD_SIZE    80        // 闹钟ID最大长度
@@ -187,6 +187,7 @@ typedef enum {
     DOWNLOAD_INIT_FAIL,
     DOWNLOAD_FAIL,
     REQUEST_UPGRADE,
+    REQUEST_FLASH,
     REQUEST_REBOOT
 }UPGRADE_STATUS;
 

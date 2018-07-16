@@ -30,7 +30,7 @@
  ************************************************************************************************************************************************************************************/
 
 int					 server_sock;		// 服务器SOCKET
-//DOWNLOAD_PARAM dl_param;
+DOWNLOAD_PARAM dl_param;
 
 int status;
 
@@ -43,7 +43,7 @@ void *Do_Download(void *dl){
     a_dl_param.dl_sock=server_sock;
     printf("[%s]==>sock=%d\n",__FUNCTION__,a_dl_param.dl_sock);
 
-    int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.2.111/","/home/sin/download",False);
+    int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
     if (ret==-1)
     {
         printf("[%s]==>failed\n",__FUNCTION__);
@@ -54,8 +54,6 @@ void *Do_Download(void *dl){
 
         printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,a_dl_param.dl_sock,a_dl_param.errcode);
         AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
-
-
     }
 
 
@@ -434,7 +432,7 @@ int  main(int argc, char *argv[])
     struct timeval	timeout_select;
     int             nError;
 
-
+    memset(&dl_param,0, sizeof(dl_param));
     AIcom_ChangeToDaemon();
 
     // 重定向输出
@@ -457,6 +455,8 @@ int  main(int argc, char *argv[])
     };
 
     a_dl_param.dl_sock=server_sock;
+    dl_param.dl_sock=server_sock;
+    dl_param.is_full_pkg_update=True;
     // 把本进程的标识送给主进程
     PacketHead stHead;
     memset((char *)&stHead,0,sizeof(PacketHead));
@@ -499,8 +499,7 @@ int  main(int argc, char *argv[])
             PacketHead *pHead = (PacketHead *)lpInBuffer;
             switch(pHead->iPacketID) {
 
-                case PKT_UPGRADE_CTRL:
-                {
+                case PKT_UPGRADE_CTRL: {
                     /*
                     E_UPG_CONTROL_UPGRADE_STATUS status=Aawant_Get_Upgrade_Status();
                     if(status==E_UPG_CONTROL_UPGRADE_STATUS_UPGRADING)
@@ -513,37 +512,38 @@ int  main(int argc, char *argv[])
 
                     TO_UPGRADE_DATA *upData;
 
-                    upData = (TO_UPGRADE_DATA *)(lpInBuffer+sizeof(PacketHead));
+                    upData = (TO_UPGRADE_DATA *) (lpInBuffer + sizeof(PacketHead));
 
-                    if(upData->action==DOWNLOAD_START){
+                    if (upData->action == DOWNLOAD_START) {
                         printf("Upgrade:start download\n");
+                        // Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_INITED);
+
                         createDownloadPthread(a_dl_param);
 
-                    } else if(upData->action==DOWNLOAD_CONTINUE){
+                    } else if (upData->action == DOWNLOAD_CONTINUE) {
                         printf("Upgrade:continue\n");
-                       // FROM_UPGRADE_DATA upgradeData;
+                        // FROM_UPGRADE_DATA upgradeData;
 
-                       // upgradeData.status=0;
-                       // upgradeData.code=0;
+                        // upgradeData.status=0;
+                        // upgradeData.code=0;
 
-                       //  AAWANTSendPacket(read_sock,PKT_UPGRADE_CTRL,(char *)&upgradeData, sizeof(upgradeData));
-                    }
-                    else if(upData->action==DOWNLOAD_PAUSE){
+                        //  AAWANTSendPacket(read_sock,PKT_UPGRADE_CTRL,(char *)&upgradeData, sizeof(upgradeData));
+                    } else if (upData->action == DOWNLOAD_PAUSE) {
                         printf("Upgrade:pause\n");
 
-                    }
-                    else if(upData->action==DOWNLOAD_CANCEL){
+                    } else if (upData->action == DOWNLOAD_CANCEL) {
                         printf("Upgrade:cancel\n");
+                        Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
 
-                    } else if(upData->action==UPGRADE_START){
+                    } else if (upData->action == UPGRADE_START) {
                         printf("Upgrade:start upgrade\n");
-
+                        //Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
+                        AawantCmd_Flash_ImgData(&dl_param);
                     }
 
 
-                }
                     break;
-
+                }
                 default:
                     //WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");
                     printf("upgraded Process : Receive unknown message from Master Process!\n");

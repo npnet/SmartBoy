@@ -55,14 +55,34 @@ void test_media_status()
 	
 }
 
-//升级
-void test_upgrade(){
+//下载
+void test_download(){
 	TO_UPGRADE_DATA upData;
 	upData.action=DOWNLOAD_START;
 	strcpy(upData.url,"http://192.168.1.118/update.bin");
 	AAWANTSendPacket(server_sock,PKT_UPGRADE_CTRL,(char *)&upData,sizeof(TO_UPGRADE_DATA));
 
 }
+
+//下载取消
+void test_download_cancel(){
+	TO_UPGRADE_DATA upData;
+	upData.action=DOWNLOAD_CANCEL;
+	strcpy(upData.url,"http://192.168.1.118/update.bin");
+	AAWANTSendPacket(server_sock,PKT_UPGRADE_CTRL,(char *)&upData,sizeof(TO_UPGRADE_DATA));
+
+}
+
+//升级
+void test_upgrade(){
+	TO_UPGRADE_DATA upData;
+	upData.action=UPGRADE_START;
+	strcpy(upData.url,"http://192.168.1.118/update.bin");
+	AAWANTSendPacket(server_sock,PKT_UPGRADE_CTRL,(char *)&upData,sizeof(TO_UPGRADE_DATA));
+
+}
+
+
 
 
 void kill_master()
@@ -143,6 +163,18 @@ int  main(int argc, char *argv[])
 	if(argc>=2&& strcasecmp(argv[1],"upgrade")==0){
 		test_upgrade();
 	}
+
+	//发送升级命令给主程序
+	if(argc>=2&& strcasecmp(argv[1],"download")==0){
+		test_download();
+	}
+
+
+	//发送升级命令给主程序
+	if(argc>=2&& strcasecmp(argv[1],"upcancel")==0){
+		test_download_cancel();
+	}
+
 	// 终止系统
 	if(argc>=2 && strcasecmp(argv[1],"kill")==0) {
 		kill_master();

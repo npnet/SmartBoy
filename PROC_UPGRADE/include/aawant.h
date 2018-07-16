@@ -22,6 +22,8 @@
 
 #define NETWORK_UPGRADE_BASE_URL    "http://192.168.1.118/"
 
+
+//#define AAWANT_DEBUG
 #ifdef AAWANT_DEBUG
 /* for id file download */
 #define UPGRADE_ID_FILE_NAME        "upg_id_file.bin"

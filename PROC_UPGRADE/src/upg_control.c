@@ -933,7 +933,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
  * 烧写升级程序完成
  */
 
-static void AawantCmd_Flash_Img_Done(void)
+void AawantCmd_Flash_Img_Done(void)
 {
     int32 i4_ret = 0;
     char old_id_file[BUF_SIZE] = {0};
@@ -971,10 +971,12 @@ int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
 
     if (is_full_pkg)
     {
+        mprintf("[%s]==>Aawant_Fully_Flash_ImgData\n",__FUNCTION__);
         i4_ret = Aawant_Fully_Flash_ImgData(dl_param);
     }
     else
     {
+        mprintf("[%s]==>Aawant_Sectionally_Flash_ImgData\n",__FUNCTION__);
         i4_ret = Aawant_Sectionally_Flash_ImgData(dl_param);
     }
     return i4_ret;
