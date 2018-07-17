@@ -1382,7 +1382,7 @@ int32 Aawant_DownLoad_init(DOWNLOAD_PARAM *dl_param,
     {
         file_name = UPGRADE_OTA_FILE_NAME;
     }
-    memset(dl_param, 0, sizeof(DOWNLOAD_PARAM));
+   // memset(dl_param, 0, sizeof(DOWNLOAD_PARAM));
 
     pthread_mutex_init(&dl_param->flash_mutex, NULL);
     pthread_cond_init(&dl_param->flash_cond, NULL);
@@ -1712,27 +1712,20 @@ int32 Aawant_Parse_ZipHeadInfo(const struct zip_header_raw *raw_data, struct zip
 int32 Aawant_Request_To_Flash_Data(DOWNLOAD_PARAM *dl)
 {
     printf("[%s]==>\n",__FUNCTION__);
-#ifdef ISNEED
-    int32 i4_ret = 0;
-    UPGRADE_DL_MSG dl_msg;
-    dl_msg.pt_msg.ui4_sender_id = MSG_FROM_UPG_CONTROL;
-    dl_msg.pt_msg.ui4_msg_type = E_UPG_CONTROL_FLASH_IMG_DATA;
-    dl_msg.dl_param = dl_param;
-    i4_ret = _upgrade_download_send_msg(&dl_msg, UPG_CONTROL_THREAD_NAME);
-    if (i4_ret)
-        printf("_upg_control_send_msg failed:%d\n", i4_ret);
-
-    return i4_ret;
-#endif
 
 
+    int ret=0;
     FROM_UPGRADE_DATA upgradeData;
 
 //    upgradeData.status=(E_UPG_CONTROL_UPGRADE_STATUS)0;
-    upgradeData.status=REQUEST_FLASH;
+    upgradeData.status=DOWNLOAD_FINISH_AND_REQUEST_UPGRADE;
+    upgradeData.code=0;
 
-    printf("[%s]==>sock=%d\n",__FUNCTION__,dl->dl_sock);
-    AAWANTSendPacket(dl->dl_sock,PKT_UPGRADE_CTRL,(char *)&upgradeData, sizeof(upgradeData));
+    printf("[%s]==>sock=%d\n",__FUNCTION__,a_dl_param.dl_sock);
+    ret=AAWANTSendPacket(dl->dl_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
+    if(ret==-1)
+        printf("[%s]==>request to flash fail\n",__FUNCTION__);
+    return ret;
 
 }
 
@@ -1823,9 +1816,9 @@ size_t Aawant_Download_FullOtaPackage_CB(void *ptr, size_t size, size_t nmemb, v
         printf("[%s]==>full pkg download done,download_size/requested_size: %d/%d\n",__FUNCTION__,
                dl_param->downloaded_size,dl_param->requested_size);
         dl_param->is_request_done = False;
-        i4_ret =Aawant_Request_To_Flash_Data(dl_param);
+       // i4_ret =Aawant_Request_To_Flash_Data(dl_param);
 
-        if(i4_ret)
+        if(i4_ret==-1)
             printf("[%s]==>request_to_flash_data failed, ignore \n",__FUNCTION__);
     }
     return (size * nmemb);
@@ -1914,12 +1907,12 @@ size_t Aawant_Download_Ota_Package_CB(void *ptr, size_t size, size_t nmemb, void
             img_info->is_flash_unit_done = False;
 //==========>
 
-        /*
+
             i4_ret = Aawant_Request_To_Flash_Data(dl_param);
-            if (i4_ret)
+            if (i4_ret==-1)
                 printf("[%s:%d]==>request_to_flash_data failed, ignore \n",__FUNCTION__,__LINE__);
-        */
-            Aawant_Wait_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
+
+            //Aawant_Wait_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
 
             return -1;
         }
@@ -1941,14 +1934,18 @@ size_t Aawant_Download_Ota_Package_CB(void *ptr, size_t size, size_t nmemb, void
                 img_info->is_flash_unit_done = False;
 
 
+
                 /*
+                 //这函数放这里会导致，下载线程还没完全结束，就收到主程序升级的信息，然后就开始升级了
+                 //发给下载完成的信息给主程序
                 i4_ret = Aawant_Request_To_Flash_Data(dl_param);
-                if (i4_ret)
+                if (i4_ret==-1)
                 {
                     printf("[%s:%d]==>request_to_flash_data failed, ignore \n",__FUNCTION__,__LINE__);
                 }
                  */
-                Aawant_Wait_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
+
+              //  Aawant_Wait_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
 
             }
             return (size * nmemb);
@@ -2208,17 +2205,20 @@ void Aawant_Clean_Download_BasicInfo(DOWNLOAD_PARAM *dl_param)
         dl_param->fp = NULL;
     }
 
+    /*
+    //删除下载的文件
     if (0 == access(dl_param->save_path, F_OK))
     {
         if (0 == remove(dl_param->save_path))
         {
-            printf("[%s]==>remove existing %s \n", dl_param->save_path,__FUNCTION__);
+            printf("[%s]==>remove existing %s \n",__FUNCTION__, dl_param->save_path);
         }
         else
         {
-            printf("[%s]==>remove existing %s failed\n", dl_param->save_path,__FUNCTION__);
+            printf("[%s]==>remove existing %s failed\n",__FUNCTION__, dl_param->save_path);
         }
     }
+    */
 }
 
 
@@ -2281,7 +2281,7 @@ int32 Awant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl)
             goto out;
         }
     }
-    Aawant_Wait_Data_Flash_Done(dl_param, &dl_param->is_request_done);
+   // Aawant_Wait_Data_Flash_Done(dl_param, &dl_param->is_request_done);
 
     out:
     if (dl_param->curl)
@@ -2377,9 +2377,9 @@ int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM dl)
 
     FROM_UPGRADE_DATA upgradeData;
 
-//    upgradeData.status=0;
-    upgradeData.code=0;
-
+    upgradeData.status=UPGRADE_FINISH_AND_REQUEST_REBOOT;
+    //upgradeData.code=0;
+    printf("[%s]==>dl_sock=%d\n",__FUNCTION__,a_dl_param.dl_sock);
     AAWANTSendPacket(dl.dl_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
 }
 
@@ -2402,6 +2402,7 @@ int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl,char *g_url,char *save_path,boolean
             printf("[%s]==>Download FullOtaPackage failed,%d\n",__FUNCTION__,ret);
             return ret;
         }
+
     }
     else
     {
@@ -2415,14 +2416,16 @@ int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl,char *g_url,char *save_path,boolean
             return ret;
         }
     }
+
     /*
     ret = Aawant_Notify_Flash_Done(dl);
     if (ret)
     {
         printf("[%s]=Notify Flash Done failed\n",__FUNCTION__);
     }
-     */
+
     printf("[%s]==>ret=%d\n",__FUNCTION__,ret);
+    */
     return ret;
 }
 

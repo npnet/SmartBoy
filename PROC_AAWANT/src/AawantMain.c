@@ -40,6 +40,8 @@ int Get_Equipment_Data(struct EquipmentRegister_Iot_Data *pData) {
     return AI_OK;
 }
 
+
+
 /********************************************************************
  * NAME         : StartAawantServer
  * FUNCTION     : 启动主进程
@@ -132,6 +134,7 @@ void StartAawantServer() {
         for (i = 0; i < CLIENT_SOCKET_NUM; i++) {
             if (iClientSocketList[i] && FD_ISSET(iClientSocketList[i], &readmask)) { // iClientSocketList[i]有消息发到
                 char *lpInBuffer = AAWANTGetPacket(iClientSocketList[i], &nError);
+                char *lpOutBuffer=NULL;
 
                 if (lpInBuffer == NULL) {
                     if (nError == EINTR || nError == 0) {  /* 因信号而中断 */
@@ -248,10 +251,28 @@ void StartAawantServer() {
                         break;
 
                     case PKT_UPGRADE_FEEDBACK: {
-                        printf("main<==upgrade\n");
+                        printf("=============PKT_UPGRADE_FEEDBACK=============\n");
                         FROM_UPGRADE_DATA *updata;
+
                         updata = (FROM_UPGRADE_DATA *) (lpInBuffer + sizeof(PacketHead));
-                        printf("get upgrade status code:%d\n",updata->code);
+                        if(updata->status==DOWNLOAD_FINISH_AND_REQUEST_UPGRADE|updata->status==DOWNLOAD_SUCESS){
+                            printf("FEEDBACK:Get DownLoad Finsh Request\n");
+                            TO_UPGRADE_DATA uData;
+
+                            memset(&updata,0, sizeof(updata));
+                            uData.action=UPGRADE_START;
+                            AAWANTSendPacket(iClientSocketList[i], PKT_UPGRADE_CTRL, (char *) &uData,
+                                             sizeof(TO_UPGRADE_DATA));
+                        }
+                        else if(updata->status==DOWNLOAD_FAIL|updata->status==DOWNLOAD_INIT_FAIL){
+                            printf("FEEDBACK:Get DownLoad Fail Msg\n");
+                            printf("download fail,code=%d\n",updata->code);
+                        } else if(updata->status==REQUEST_REBOOT|updata->status==UPGRADE_FINISH_AND_REQUEST_REBOOT){
+                            printf("FEEDBACK:Get Upgrade Finish Msg\n");
+                            system("reboot");
+                        }
+
+
                         break;
                     }
                     //用做测试
@@ -265,6 +286,7 @@ void StartAawantServer() {
                             if(upgrade_socket>0) {
                                 AAWANTSendPacket(upgrade_socket, lpInBuffer);
                             }
+
                         }
                         else if(upgData->action==DOWNLOAD_PAUSE){
                             printf("get msg==>download pause\n");

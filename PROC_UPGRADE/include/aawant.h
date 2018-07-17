@@ -23,8 +23,8 @@
 #define NETWORK_UPGRADE_BASE_URL    "http://192.168.1.118/"
 
 
-//#define AAWANT_DEBUG
-#ifdef AAWANT_DEBUG
+//#define SINE_DEBUG
+#ifdef SINE_DEBUG
 /* for id file download */
 #define UPGRADE_ID_FILE_NAME        "upg_id_file.bin"
 #define UPGRADE_ID_FILE_SAVE_PATH   "/home/sine/download"
@@ -36,11 +36,10 @@
 
 /* for full update package download */
 #define UPGRADE_FULL_PKG_NAME       "update.zip"
-#define UPGRADE_FULL_PKG_SAVE_PATH  "/home/sine/download"
+#define UPGRADE_FULL_PKG_SAVE_PATH  "/home/sine/download/"
 
 #define UPGRADE_DOWNLOAD_RESUME_TIMES           (60)        /* try 60 times, about 1 min if connection timeout */
 #define UPGRADE_TRANSFER_FLASH_SIZE             (1<<21)     /*  transfer around 2MB data to upg_app for flashing every times */
-
 
 #else
 /* for id file download */
@@ -60,6 +59,8 @@
 #define UPGRADE_TRANSFER_FLASH_SIZE             (1<<21)     /*  transfer around 2MB data to upg_app for flashing every times */
 
 #endif
+
+
 /*enum */
 typedef enum
 {

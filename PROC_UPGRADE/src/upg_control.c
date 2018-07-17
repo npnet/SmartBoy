@@ -857,14 +857,28 @@ int32 Aawant_Fully_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
 {
     int32 i4_ret = 0;
     char upg_app_cmd[BUF_SIZE_HALF]={0};
-
+#define PATH "/tmp/update"
 
     snprintf(upg_app_cmd, sizeof(upg_app_cmd), "upgrade_app %s", dl_param->save_path);
     printf("call upg app: %s\n", upg_app_cmd);
+
+    if(0==access(PATH,F_OK))
+    {
+
+        if (0 == remove(PATH))
+        {
+            printf("remove existing %s \n", PATH);
+        }
+        else
+        {
+            printf("remove existing %s failed\n", PATH);
+            return -1;
+        }
+    }
     i4_ret = system(upg_app_cmd);
     printf("[%s]==>upgrade_app return: %d\n",__FUNCTION__,i4_ret);
 
-    Aawant_Wakeup_Data_Flash_Done(dl_param, &dl_param->is_request_done);
+  //  Aawant_Wakeup_Data_Flash_Done(dl_param, &dl_param->is_request_done);
     return i4_ret;
 }
 
@@ -971,13 +985,16 @@ int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
 
     if (is_full_pkg)
     {
-        mprintf("[%s]==>Aawant_Fully_Flash_ImgData\n",__FUNCTION__);
+        mprintf("------------------[%s][Start]---------------------\n",__FUNCTION__);
+
         i4_ret = Aawant_Fully_Flash_ImgData(dl_param);
+        mprintf("------------------[%s][Finish]--------------------\n",__FUNCTION__);
     }
     else
     {
-        mprintf("[%s]==>Aawant_Sectionally_Flash_ImgData\n",__FUNCTION__);
+
         i4_ret = Aawant_Sectionally_Flash_ImgData(dl_param);
+        mprintf("[%s]==>Sectionally_Flash_ImgData Finish\n",__FUNCTION__);
     }
     return i4_ret;
 }
