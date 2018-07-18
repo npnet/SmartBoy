@@ -42,14 +42,14 @@ void *Do_Download(void *dl){
    // dl_param.dl_sock=server_sock;
     a_dl_param.dl_sock=server_sock;
     printf("[%s]==>sock=%d\n",__FUNCTION__,a_dl_param.dl_sock);
-    Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_DOING);
+    Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_DOING);
   //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
     int ret=Aawant_StartDownLoad(dl_param,"http://192.168.1.118/","/home/sine/download",True);
 
     if (ret==-1)
     {
         printf("[%s]==>failed\n",__FUNCTION__);
-        Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_FAIL);
+        Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_FAIL);
         FROM_UPGRADE_DATA upgradeData;
         upgradeData.status=DOWNLOAD_FAIL;
         upgradeData.code=a_dl_param.errcode;
@@ -60,7 +60,7 @@ void *Do_Download(void *dl){
         AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
     } else{
         printf("[%s]==>sucess\n",__FUNCTION__);
-        Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_SUCESS);
+        Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_SUCESS);
         FROM_UPGRADE_DATA upgradeData;
         upgradeData.status=DOWNLOAD_SUCESS;
         upgradeData.code=0;
@@ -551,7 +551,8 @@ int  main(int argc, char *argv[])
                         } if(status==AAW_CTL_UPGRADE_DOING){
                             printf("It is upgrading\n");
                         }
-                        else if(status==AAW_CTL_DOWNLOAD_INIT|status==AAW_CTL_UPGRADE_SUCESS){
+                        else if(status==AAW_CTL_DOWNLOAD_INIT|status==AAW_CTL_UPGRADE_SUCESS|status==AAW_CTL_UPGRADE_FAIL
+                                |status==AAW_CTL_DOWNLOAD_CANCEL|status==AAW_CTL_DOWNLOAD_FAIL){
                             createDownloadPthread(a_dl_param);
                         }
 
@@ -568,7 +569,7 @@ int  main(int argc, char *argv[])
 
                     } else if (upData->action == DOWNLOAD_CANCEL) {
                         printf("Upgrade:cancel\n");
-                        Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_CANCEL);
+                        Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_CANCEL);
 
                     } else if (upData->action == UPGRADE_START) {
                         printf("=======Upgrade:Get Upgrade Cmd========\n");
@@ -586,7 +587,7 @@ int  main(int argc, char *argv[])
                         if (ret==-1)
                         {
                             printf("Upgrade failed\n");
-                            Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_FAIL);
+                            Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_UPGRADE_FAIL);
                             FROM_UPGRADE_DATA upgradeData;
                             upgradeData.status=UPGRADE_FAIL;
                             upgradeData.code=0;

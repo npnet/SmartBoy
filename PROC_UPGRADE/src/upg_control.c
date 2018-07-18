@@ -906,7 +906,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
             if (i4_ret)
             {
                 printf("[%s:%d]==>call_app_to_flash_data failed, cancel download\n",__FUNCTION__,__LINE__);
-                Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_CANCEL);
+                Aawant_Set_Upgrade_Status(dl_param,AAW_CTL_DOWNLOAD_CANCEL);
                 Aawant_Wakeup_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
                 return i4_ret;
             }
@@ -929,7 +929,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
         if (i4_ret)
         {
             printf("[%s]==>Call_App_To_Flash_Data failed, cancel download\n",__FUNCTION__);
-            Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_CANCEL);
+            Aawant_Set_Upgrade_Status(dl_param,AAW_CTL_DOWNLOAD_CANCEL);
             Aawant_Wakeup_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
             return i4_ret;
         }
@@ -983,7 +983,7 @@ int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
 {
     int32 i4_ret = 0;
     boolean is_full_pkg = dl_param->is_full_pkg_update;
-    Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_DOING);
+    Aawant_Set_Upgrade_Status(dl_param,AAW_CTL_UPGRADE_DOING);
 //#define ZIP_PATH  "/tmp/update.zip"
     mprintf("------------------[%s][Start]---------------------\n",__FUNCTION__);
     if (is_full_pkg)
@@ -1017,17 +1017,19 @@ int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
         mprintf("[%s]==>Sectionally_Flash_ImgData Finish\n",__FUNCTION__);
     }
     if(i4_ret==-1){
-        Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_FAIL);
+        Aawant_Set_Upgrade_Status(dl_param,AAW_CTL_UPGRADE_FAIL);
     } else{
-        Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_SUCESS);
+        Aawant_Set_Upgrade_Status(dl_param,AAW_CTL_UPGRADE_SUCESS);
     }
     return i4_ret;
 }
 
-void Aawant_Set_Upgrade_Status(AAWANT_UPG_CTL_STATUS status){
-    //pthread_mutex_lock()
+void Aawant_Set_Upgrade_Status(DOWNLOAD_PARAM *dl,AAWANT_UPG_CTL_STATUS status){
+    pthread_mutex_lock(&dl->status_mutex);
     aa_status=status;
+
     mprintf("[%s]==>current status:%d\n",__FUNCTION__,aa_status);
+    pthread_mutex_unlock(&dl->status_mutex);
 }
 
 
