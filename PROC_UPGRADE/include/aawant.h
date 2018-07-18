@@ -177,6 +177,20 @@ typedef struct DOWNLOAD_TREAD_PARAM_T
 }DOWNLOAD_TREAD_PARAM;
 
 
+typedef enum AAWANT_UPG_CTL_STATUS_T{
+    AAW_CTL_DOWNLOAD_INIT=0,
+    AAW_CTL_DOWNLOAD_SUCESS,
+    AAW_CTL_DOWNLOAD_FAIL,
+    AAW_CTL_DOWNLOAD_DOING,
+    AAW_CTL_DOWNLOAD_CANCEL,
+    AAW_CTL_DOWNLOAD_PAUSE,
+    AAW_CTL_UPGRADE_DOING,
+    AAW_CTL_UPGRADE_SUCESS,
+    AAW_CTL_UPGRADE_FAIL,
+    AAW_CTL_UPGRADE_CANCEL
+
+}AAWANT_UPG_CTL_STATUS;
+
 typedef struct AAWANT_DOWNLOAD_PARAM_T{
     char url[256];
     char save_path[256];
@@ -194,14 +208,18 @@ typedef struct AAWANT_DOWNLOAD_PARAM_T{
     boolean  is_request_done;
     pthread_cond_t flash_cond;
     pthread_mutex_t flash_mutex;
+    pthread_mutex_t status_mutex;//升级状态锁
+    pthread_cond_t  status_cond;
     char img_num;
     char processing_img_idx;
     UPGRADE_IMAGE_INFO image[UPGRADE_IMG_NUM];
     int dl_sock;
     E_UPG_CONTROL_UPGRADE_STATUS status;
+    //AAWANT_UPG_CTL_STATUS status;
 }DOWNLOAD_PARAM;
 
 extern DOWNLOAD_PARAM a_dl_param;
 extern E_UPG_CONTROL_UPGRADE_STATUS a_status;
+extern AAWANT_UPG_CTL_STATUS aa_status;
 
 #endif //SMARTBOY_AAWANT_H

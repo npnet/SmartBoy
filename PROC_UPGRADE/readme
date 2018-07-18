@@ -1,0 +1,27 @@
+total   block   page/block  Byte/page
+256M    2048    64            2048
+
+
+
+
+
+
+
+
+per block size = 2048*64=128 KByte = 131072Byte
+
+2MB=        2097152 Byte
+
+tz.img      1181214
+boot.img    6152710
+rootfs.ubi  32243712
+
+
+
+
+
+
+
+
+
+

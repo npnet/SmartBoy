@@ -906,7 +906,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
             if (i4_ret)
             {
                 printf("[%s:%d]==>call_app_to_flash_data failed, cancel download\n",__FUNCTION__,__LINE__);
-                Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
+                Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_CANCEL);
                 Aawant_Wakeup_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
                 return i4_ret;
             }
@@ -929,7 +929,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
         if (i4_ret)
         {
             printf("[%s]==>Call_App_To_Flash_Data failed, cancel download\n",__FUNCTION__);
-            Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
+            Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_CANCEL);
             Aawant_Wakeup_Data_Flash_Done(dl_param, &img_info->is_flash_unit_done);
             return i4_ret;
         }
@@ -947,6 +947,7 @@ int32 Aawant_Sectionally_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
  * 烧写升级程序完成
  */
 
+/*
 void AawantCmd_Flash_Img_Done(void)
 {
     int32 i4_ret = 0;
@@ -971,24 +972,43 @@ void AawantCmd_Flash_Img_Done(void)
 
     printf("[%s]==>upgrade done! now reboot!\n",__FUNCTION__);
 
-    Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_DONE);
+    Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_SUCESS);
 
     system("reboot");
 
 }
-
+*/
 
 int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
 {
     int32 i4_ret = 0;
     boolean is_full_pkg = dl_param->is_full_pkg_update;
-
+    Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_DOING);
+//#define ZIP_PATH  "/tmp/update.zip"
+    mprintf("------------------[%s][Start]---------------------\n",__FUNCTION__);
     if (is_full_pkg)
     {
-        mprintf("------------------[%s][Start]---------------------\n",__FUNCTION__);
+
 
         i4_ret = Aawant_Fully_Flash_ImgData(dl_param);
         mprintf("------------------[%s][Finish]--------------------\n",__FUNCTION__);
+        /*
+        if(i4_ret!=-1){
+            if(0==access(ZIP_PATH,F_OK))
+            {
+
+                if (0 == remove(ZIP_PATH))
+                {
+                    printf("remove existing %s \n", ZIP_PATH);
+                }
+                else
+                {
+                    printf("remove existing %s failed\n", ZIP_PATH);
+                    return -1;
+                }
+            }
+        }
+         */
     }
     else
     {
@@ -996,15 +1016,25 @@ int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param)
         i4_ret = Aawant_Sectionally_Flash_ImgData(dl_param);
         mprintf("[%s]==>Sectionally_Flash_ImgData Finish\n",__FUNCTION__);
     }
+    if(i4_ret==-1){
+        Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_FAIL);
+    } else{
+        Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_SUCESS);
+    }
     return i4_ret;
 }
 
-void Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS status){
-    a_status=status;
+void Aawant_Set_Upgrade_Status(AAWANT_UPG_CTL_STATUS status){
+    //pthread_mutex_lock()
+    aa_status=status;
+    mprintf("[%s]==>current status:%d\n",__FUNCTION__,aa_status);
 }
 
 
-E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void){
-    return a_status;
+//E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void){
+AAWANT_UPG_CTL_STATUS Aawant_Get_Upgrade_Status(void){
+    mprintf("[%s]==>current status:%d\n",__FUNCTION__,aa_status);
+
+    return aa_status;
 }
 

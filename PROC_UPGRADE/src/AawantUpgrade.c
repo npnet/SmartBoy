@@ -42,26 +42,30 @@ void *Do_Download(void *dl){
    // dl_param.dl_sock=server_sock;
     a_dl_param.dl_sock=server_sock;
     printf("[%s]==>sock=%d\n",__FUNCTION__,a_dl_param.dl_sock);
+    Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_DOING);
+  //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
+    int ret=Aawant_StartDownLoad(dl_param,"http://192.168.1.118/","/home/sine/download",True);
 
-    int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
     if (ret==-1)
     {
         printf("[%s]==>failed\n",__FUNCTION__);
-        Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_FAILED);
+        Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_FAIL);
         FROM_UPGRADE_DATA upgradeData;
         upgradeData.status=DOWNLOAD_FAIL;
         upgradeData.code=a_dl_param.errcode;
 
-        printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,a_dl_param.dl_sock,a_dl_param.errcode);
+      //  printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,a_dl_param.dl_sock,a_dl_param.errcode);
+        printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,dl_param.dl_sock,dl_param.errcode);
+
         AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
     } else{
         printf("[%s]==>sucess\n",__FUNCTION__);
-       // Aawant_Set_Upgrade_Status(E);
+        Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_SUCESS);
         FROM_UPGRADE_DATA upgradeData;
         upgradeData.status=DOWNLOAD_SUCESS;
         upgradeData.code=0;
 
-        //printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,a_dl_param.dl_sock,a_dl_param.errcode);
+        printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,dl_param.dl_sock,dl_param.errcode);
         AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
     }
 
@@ -77,11 +81,13 @@ void *Do_Download(void *dl){
  */
 int32 createDownloadPthread(DOWNLOAD_PARAM arg){
     pthread_t  dl_ptd;
-    DOWNLOAD_PARAM dl=arg;
+   // DOWNLOAD_PARAM dl=arg;
     // dl.dl_sock=arg.dl_sock;
 
     mprintf("[%s]==>%d\n",__FUNCTION__,arg.dl_sock);
-    int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl);
+   // int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl);
+    int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl_param);
+
     if(ret!=0)
     {
         printf("[%s]==>create pthread fail\n",__FUNCTION__);
@@ -441,7 +447,7 @@ int  main(int argc, char *argv[])
     struct timeval	timeout_select;
     int             nError;
 
-    memset(&dl_param,0, sizeof(dl_param));
+
     AIcom_ChangeToDaemon();
 
     // 重定向输出
@@ -465,12 +471,19 @@ int  main(int argc, char *argv[])
 
 
     memset(&a_dl_param, 0, sizeof(DOWNLOAD_PARAM));
+    memset(&dl_param,0, sizeof(dl_param));
 
-    a_dl_param.dl_sock=server_sock;
+  //  a_dl_param.dl_sock=server_sock;
     dl_param.dl_sock=server_sock;
-    dl_param.is_full_pkg_update=True;
-    stpcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
-    strcat(dl_param.save_path,UPGRADE_FULL_PKG_NAME);
+    dl_param.is_full_pkg_update=False;
+    dl_param.status_cond=PTHREAD_COND_INITIALIZER;
+    dl_param.status_mutex=PTHREAD_MUTEX_INITIALIZER;
+
+    aa_status=AAW_CTL_DOWNLOAD_INIT;
+
+
+   // stpcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
+   // strcat(dl_param.save_path,UPGRADE_FULL_PKG_NAME);
     // 把本进程的标识送给主进程
     PacketHead stHead;
     memset((char *)&stHead,0,sizeof(PacketHead));
@@ -523,6 +536,7 @@ int  main(int argc, char *argv[])
                         Aawant_Set_Upgrade_Status(dl_param.status);
                     }
                     */
+                    AAWANT_UPG_CTL_STATUS status;
 
                     TO_UPGRADE_DATA *upData;
 
@@ -531,8 +545,15 @@ int  main(int argc, char *argv[])
                     if (upData->action == DOWNLOAD_START) {
                         printf("Upgrade:start download\n");
                         // Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_INITED);
-
-                        createDownloadPthread(a_dl_param);
+                        status=Aawant_Get_Upgrade_Status();
+                        if(status==AAW_CTL_DOWNLOAD_DOING){
+                            printf("It is downloading\n");
+                        } if(status==AAW_CTL_UPGRADE_DOING){
+                            printf("It is upgrading\n");
+                        }
+                        else if(status==AAW_CTL_DOWNLOAD_INIT|status==AAW_CTL_UPGRADE_SUCESS){
+                            createDownloadPthread(a_dl_param);
+                        }
 
                     } else if (upData->action == DOWNLOAD_CONTINUE) {
                         printf("Upgrade:continue\n");
@@ -547,18 +568,25 @@ int  main(int argc, char *argv[])
 
                     } else if (upData->action == DOWNLOAD_CANCEL) {
                         printf("Upgrade:cancel\n");
-                        Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
+                        Aawant_Set_Upgrade_Status(AAW_CTL_DOWNLOAD_CANCEL);
 
                     } else if (upData->action == UPGRADE_START) {
                         printf("=======Upgrade:Get Upgrade Cmd========\n");
 
                         //Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
+
+                        dl_param.is_full_pkg_update=True;
+                        memset(dl_param.save_path,0,sizeof(dl_param.save_path));
+                        stpcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
+                        strcat(dl_param.save_path,UPGRADE_FULL_PKG_NAME);
+
                         int ret=AawantCmd_Flash_ImgData(&dl_param);
+
 
                         if (ret==-1)
                         {
                             printf("Upgrade failed\n");
-                            Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_FAILED);
+                            Aawant_Set_Upgrade_Status(AAW_CTL_UPGRADE_FAIL);
                             FROM_UPGRADE_DATA upgradeData;
                             upgradeData.status=UPGRADE_FAIL;
                             upgradeData.code=0;
@@ -574,6 +602,8 @@ int  main(int argc, char *argv[])
 
                             AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
                         }
+
+
                     }
 
 

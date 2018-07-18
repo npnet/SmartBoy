@@ -269,7 +269,7 @@ void StartAawantServer() {
                             printf("download fail,code=%d\n",updata->code);
                         } else if(updata->status==REQUEST_REBOOT|updata->status==UPGRADE_FINISH_AND_REQUEST_REBOOT){
                             printf("FEEDBACK:Get Upgrade Finish Msg\n");
-                            system("reboot");
+                            //system("reboot");
                         }
 
 
