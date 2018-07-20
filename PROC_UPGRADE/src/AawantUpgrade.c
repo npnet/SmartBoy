@@ -20,26 +20,13 @@
 #include "upg_download.h"
 
 
-/*************************************************************************************************************************************************************************************
- *                                                                                                                                                                                   *
- *                                                                                                                                                                                   *
- *                                                                             升级 管 理                                                                                        *
- *                                                                                                                                                                                   *
- *                                                                                                                                                                                   *
- ************************************************************************************************************************************************************************************/
-
 int server_sock;        // 服务器SOCKET
 DOWNLOAD_PARAM dl_param;
-
 int status;
 
 
 void *Do_Download(void *dl) {
-
-
     // dl_param.dl_sock=server_sock;
-    a_dl_param.dl_sock = server_sock;
-    printf("[%s]==>sock=%d\n", __FUNCTION__, a_dl_param.dl_sock);
     Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
     //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
     int ret = Aawant_StartDownLoad(dl_param, "http://192.168.1.118/", "/home/sine/download", True);
@@ -49,7 +36,6 @@ void *Do_Download(void *dl) {
         Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_FAIL);
         FROM_UPGRADE_DATA upgradeData;
         upgradeData.status = DOWNLOAD_FAIL;
-        upgradeData.code = a_dl_param.errcode;
 
         //  printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,a_dl_param.dl_sock,a_dl_param.errcode);
         printf("[%s]==>sock=%d,errcode=%d\n", __FUNCTION__, dl_param.dl_sock, dl_param.errcode);
@@ -66,7 +52,6 @@ void *Do_Download(void *dl) {
         AAWANTSendPacket(server_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData, sizeof(upgradeData));
     }
 
-
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
 
 }
@@ -75,14 +60,14 @@ void *Do_Download(void *dl) {
  *
  * @return
  */
-int32 createDownloadPthread(DOWNLOAD_PARAM arg) {
+int32 createDownloadPthread() {
     pthread_t dl_ptd;
     // DOWNLOAD_PARAM dl=arg;
     // dl.dl_sock=arg.dl_sock;
 
-    mprintf("[%s]==>%d\n", __FUNCTION__, arg.dl_sock);
+   // mprintf("[%s]==>%d\n", __FUNCTION__, arg.dl_sock);
     // int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl);
-    int32 ret = pthread_create(&dl_ptd, NULL, Do_Download, &dl_param);
+    int32 ret = pthread_create(&dl_ptd, NULL, Do_Download, NULL);
 
     if (ret != 0) {
         printf("[%s]==>create pthread fail\n", __FUNCTION__);
@@ -461,18 +446,13 @@ int main(int argc, char *argv[]) {
         return AI_NG;
     };
 
-
-    memset(&a_dl_param, 0, sizeof(DOWNLOAD_PARAM));
     memset(&dl_param, 0, sizeof(dl_param));
-
-    //  a_dl_param.dl_sock=server_sock;
     dl_param.dl_sock = server_sock;
     dl_param.is_full_pkg_update = False;
     dl_param.status_cond = PTHREAD_COND_INITIALIZER;
     dl_param.status_mutex = PTHREAD_MUTEX_INITIALIZER;
 
     aa_status = AAW_CTL_DOWNLOAD_INIT;
-
 
     // stpcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
     // strcat(dl_param.save_path,UPGRADE_FULL_PKG_NAME);
@@ -546,7 +526,7 @@ int main(int argc, char *argv[]) {
                         } else if (status == AAW_CTL_DOWNLOAD_INIT | status == AAW_CTL_UPGRADE_SUCESS |
                                    status == AAW_CTL_UPGRADE_FAIL
                                    | status == AAW_CTL_DOWNLOAD_CANCEL | status == AAW_CTL_DOWNLOAD_FAIL) {
-                            createDownloadPthread(a_dl_param);
+                            createDownloadPthread();
                         }
 
                     } else if (upData->action == DOWNLOAD_CONTINUE) {

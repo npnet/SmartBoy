@@ -1,3 +1,6 @@
+/***********************
+ * by sine             *
+ ***********************/
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -6,9 +9,6 @@
 #include <sys/statfs.h>
 #include <malloc.h>
 #include <AIUComm.h>
-
-//#include "u_appman.h"
-//#include "u_app_thread.h"
 #include "upg_download.h"
 #include "curl/curl.h"
 #include "AIEUComm.h"
@@ -20,17 +20,9 @@
 #define URL_LENGTH 255
 
 
-char g_url[BUF_SIZE_ENTRIE] = {NETWORK_UPGRADE_BASE_URL};
-DOWNLOAD_TREAD_PARAM g_dl_param;
-DOWNLOAD_PARAM a_dl_param;
-//E_UPG_CONTROL_UPGRADE_STATUS a_status;
+//char g_url[BUF_SIZE_ENTRIE] = {NETWORK_UPGRADE_BASE_URL};
+
 AAWANT_UPG_CTL_STATUS aa_status;
-
-
-/***********************
- * by sine             *
- ***********************/
-
 
 
 
@@ -127,7 +119,7 @@ int32 Aawant_Get_Dowload_Free_StorageSize(char *path) {
     }
     avail_size = fs_info.f_bsize * fs_info.f_bavail;
 
-    printf("[%s]==> block size:%d, total block:%d, free block:%d, available block:%d \n", __FUNCTION__,
+    printf("[%s]==>store path:%s, block size:%d, total block:%d, free block:%d, available block:%d \n", __FUNCTION__,
            path, fs_info.f_bsize, fs_info.f_blocks, fs_info.f_bfree, fs_info.f_bavail);
 
     return avail_size;
@@ -531,7 +523,6 @@ size_t Aawant_Download_Ota_Package_CB(void *ptr, size_t size, size_t nmemb, void
                    (double) img_info->img_downloaded_size / img_info->img_header.comp_size * 100);
 
             img_info->is_flash_unit_done = False;
-//==========>
 
 
             i4_ret = Aawant_Request_To_Flash_Data(dl_param);
@@ -556,8 +547,6 @@ size_t Aawant_Download_Ota_Package_CB(void *ptr, size_t size, size_t nmemb, void
                        (double) img_info->img_downloaded_size / img_info->img_header.comp_size * 100);
 
                 img_info->is_flash_unit_done = False;
-
-
 
                 /*
                  //这函数放这里会导致，下载线程还没完全结束，就收到主程序升级的信息，然后就开始升级了

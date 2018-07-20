@@ -1,3 +1,14 @@
+/**
+ * 目前升级方式分两种：
+ * 1-全包烧写，整个烧写镜像（打包成zip包）下载下来，进行烧写
+ * 2-分段烧写，低内存的时候使用，每次下载2M，烧写进系统后，然后继续下载，烧写，如此循环
+ *   直到整个系统完成升级完成
+ * 考虑到，分段烧写过程复杂，担心断电的各种情况引起不可预知的情况，现在默认为第一种烧写，
+ * 第二种暂时做测试用
+ *
+ */
+
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,8 +17,6 @@
 #include <time.h>
 #include <AawantData.h>
 #include <AIUComm.h>
-
-
 
 /* private */
 #include "upg_control.h"
@@ -173,6 +182,12 @@ void AawantCmd_Flash_Img_Done(void)
 }
 */
 
+
+/**
+ * 把升级程序烧写到flash
+ * @param dl_param
+ * @return
+ */
 int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param) {
     int32 i4_ret = 0;
     boolean is_full_pkg = dl_param->is_full_pkg_update;

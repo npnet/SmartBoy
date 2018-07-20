@@ -145,27 +145,6 @@ typedef struct UPGRADE_IMAGE_INFO_T {
 } UPGRADE_IMAGE_INFO;
 
 
-typedef struct DOWNLOAD_TREAD_PARAM_T {
-    char url[256];
-    char save_path[256];
-    boolean is_full_pkg_update;
-    int32 upg_file_size;
-    FILE *fp;
-    CURL *curl;
-    boolean is_curl_inited;
-    CURLcode errcode;
-    char curl_error_buf[CURL_ERROR_SIZE];
-    boolean is_head_info;
-    int32 requested_size;
-    int32 downloaded_size;
-    char *conntent_buf;
-    boolean is_request_done;
-    pthread_cond_t flash_cond;
-    pthread_mutex_t flash_mutex;
-    char img_num;
-    char processing_img_idx;
-    UPGRADE_IMAGE_INFO image[UPGRADE_IMG_NUM];
-} DOWNLOAD_TREAD_PARAM;
 
 
 typedef enum AAWANT_UPG_CTL_STATUS_T {
@@ -213,4 +192,6 @@ extern DOWNLOAD_PARAM a_dl_param;
 extern E_UPG_CONTROL_UPGRADE_STATUS a_status;
 extern AAWANT_UPG_CTL_STATUS aa_status;
 
+#define FunctionStart printf("----------------[%s][Start]----------------\n", __FUNCTION__);
+#define FunctionEnd   printf("-----------------[%s][End]-----------------\n", __FUNCTION__);
 #endif //SMARTBOY_AAWANT_H
