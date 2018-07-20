@@ -100,25 +100,30 @@ typedef struct UPGRADE_DL_MSG_T
 
 #endif
 
-typedef size_t (*CURL_CB_FCT)(void*,size_t,size_t,void*);
+typedef size_t (*CURL_CB_FCT)(void *, size_t, size_t, void *);
 
 /*------------------------------------------------------------------------------
                                             funcitons declarations
 ------------------------------------------------------------------------------*/
-int32 _upgrade_download_wakeup_data_flash_done(DOWNLOAD_TREAD_PARAM* dl_param, boolean* is_done);
+int32 _upgrade_download_wakeup_data_flash_done(DOWNLOAD_TREAD_PARAM *dl_param, boolean *is_done);
+
 //#ifdef aawant
-int32 _upgrade_start_download_firmware(uint32 t_delivery_type, const char* ps_url, const char* ps_fwPath);
+int32 _upgrade_start_download_firmware(uint32 t_delivery_type, const char *ps_url, const char *ps_fwPath);
+
 //#else
-int32 _upgrade_start_download_firmware(const char* ps_url, const char* ps_fwPath);
+int32 _upgrade_start_download_firmware(const char *ps_url, const char *ps_fwPath);
 //#endif
 
-char* _upgrade_get_save_path(const char *ps_save_path);
-char* _upgrade_get_server_url(const char *url);
+char *_upgrade_get_save_path(const char *ps_save_path);
+
+char *_upgrade_get_server_url(const char *url);
 
 
 //-------------
 double _upgrade_get_download_file_lenth(CURL *handle, const char *url);
+
 int32 Aawant_Wakeup_Data_Flash_Done(DOWNLOAD_PARAM *dl_param, boolean *is_done);
-int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl,char *g_url,char *save_path,boolean is_full_pkg);
+
+int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, boolean is_full_pkg);
 
 #endif /* _UPG_TRIGGER_H_ */

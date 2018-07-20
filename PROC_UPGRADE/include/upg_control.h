@@ -112,8 +112,11 @@ typedef struct _UPG_CONTROL_OBJ_T
                                             funcitons declarations
 ------------------------------------------------------------------------------*/
 int32 _upg_control_upgrade_download_fw(void);
+
 int32 _upg_control_check_id_info(void);
+
 void _upg_control_set_upgrade_status(E_UPG_CONTROL_UPGRADE_STATUS status);
+
 E_UPG_CONTROL_UPGRADE_STATUS _upg_control_get_upgrade_status(void);
 
 /*
@@ -121,7 +124,8 @@ E_UPG_CONTROL_UPGRADE_STATUS _upg_control_get_upgrade_status(void);
  */
 //void Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS status);
 //E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void);
-void Aawant_Set_Upgrade_Status(DOWNLOAD_PARAM *dl,AAWANT_UPG_CTL_STATUS status);
+void Aawant_Set_Upgrade_Status(DOWNLOAD_PARAM *dl, AAWANT_UPG_CTL_STATUS status);
+
 AAWANT_UPG_CTL_STATUS Aawant_Get_Upgrade_Status(void);
 
 int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param);

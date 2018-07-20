@@ -1,0 +1,24 @@
+
+if (cpu STREQUAL arm)
+	SET(CMAKE_C_COMPILER aarch64-poky-linux-g++)
+	LINK_DIRECTORIES(../lib/arm64)
+	SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/arm-bin)
+
+else ()
+	SET(CMAKE_C_COMPILER g++)
+	LINK_DIRECTORIES(../lib/x86)
+	SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+endif()
+
+
+
+INCLUDE_DIRECTORIES(../include)
+INCLUDE_DIRECTORIES(include)
+
+#AUX_SOURCE_DIRECTORY(src DIR_SRCS)
+#ADD_EXECUTABLE(Keyed ${DIR_SRCS})
+ADD_EXECUTABLE(Keyed src/Keyed.c)
+target_link_libraries(Keyed aawant pthread)
+
+
+

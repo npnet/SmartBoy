@@ -20,7 +20,6 @@
 #include "upg_download.h"
 
 
-
 /*************************************************************************************************************************************************************************************
  *                                                                                                                                                                                   *
  *                                                                                                                                                                                   *
@@ -29,49 +28,46 @@
  *                                                                                                                                                                                   *
  ************************************************************************************************************************************************************************************/
 
-int					 server_sock;		// 服务器SOCKET
+int server_sock;        // 服务器SOCKET
 DOWNLOAD_PARAM dl_param;
 
 int status;
 
 
+void *Do_Download(void *dl) {
 
-void *Do_Download(void *dl){
 
+    // dl_param.dl_sock=server_sock;
+    a_dl_param.dl_sock = server_sock;
+    printf("[%s]==>sock=%d\n", __FUNCTION__, a_dl_param.dl_sock);
+    Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
+    //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
+    int ret = Aawant_StartDownLoad(dl_param, "http://192.168.1.118/", "/home/sine/download", True);
 
-   // dl_param.dl_sock=server_sock;
-    a_dl_param.dl_sock=server_sock;
-    printf("[%s]==>sock=%d\n",__FUNCTION__,a_dl_param.dl_sock);
-    Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_DOING);
-  //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
-    int ret=Aawant_StartDownLoad(dl_param,"http://192.168.1.118/","/home/sine/download",True);
-
-    if (ret==-1)
-    {
-        printf("[%s]==>failed\n",__FUNCTION__);
-        Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_FAIL);
+    if (ret == -1) {
+        printf("[%s]==>failed\n", __FUNCTION__);
+        Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_FAIL);
         FROM_UPGRADE_DATA upgradeData;
-        upgradeData.status=DOWNLOAD_FAIL;
-        upgradeData.code=a_dl_param.errcode;
+        upgradeData.status = DOWNLOAD_FAIL;
+        upgradeData.code = a_dl_param.errcode;
 
-      //  printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,a_dl_param.dl_sock,a_dl_param.errcode);
-        printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,dl_param.dl_sock,dl_param.errcode);
+        //  printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,a_dl_param.dl_sock,a_dl_param.errcode);
+        printf("[%s]==>sock=%d,errcode=%d\n", __FUNCTION__, dl_param.dl_sock, dl_param.errcode);
 
-        AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
-    } else{
-        printf("[%s]==>sucess\n",__FUNCTION__);
-        Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_SUCESS);
+        AAWANTSendPacket(server_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData, sizeof(upgradeData));
+    } else {
+        printf("[%s]==>sucess\n", __FUNCTION__);
+        Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_SUCESS);
         FROM_UPGRADE_DATA upgradeData;
-        upgradeData.status=DOWNLOAD_SUCESS;
-        upgradeData.code=0;
+        upgradeData.status = DOWNLOAD_SUCESS;
+        upgradeData.code = 0;
 
-        printf("[%s]==>sock=%d,errcode=%d\n",__FUNCTION__,dl_param.dl_sock,dl_param.errcode);
-        AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
+        printf("[%s]==>sock=%d,errcode=%d\n", __FUNCTION__, dl_param.dl_sock, dl_param.errcode);
+        AAWANTSendPacket(server_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData, sizeof(upgradeData));
     }
 
 
-
-    printf("-----------------[%s][End]---------------\n",__FUNCTION__);
+    printf("-----------------[%s][End]---------------\n", __FUNCTION__);
 
 }
 
@@ -79,18 +75,17 @@ void *Do_Download(void *dl){
  *
  * @return
  */
-int32 createDownloadPthread(DOWNLOAD_PARAM arg){
-    pthread_t  dl_ptd;
-   // DOWNLOAD_PARAM dl=arg;
+int32 createDownloadPthread(DOWNLOAD_PARAM arg) {
+    pthread_t dl_ptd;
+    // DOWNLOAD_PARAM dl=arg;
     // dl.dl_sock=arg.dl_sock;
 
-    mprintf("[%s]==>%d\n",__FUNCTION__,arg.dl_sock);
-   // int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl);
-    int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl_param);
+    mprintf("[%s]==>%d\n", __FUNCTION__, arg.dl_sock);
+    // int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl);
+    int32 ret = pthread_create(&dl_ptd, NULL, Do_Download, &dl_param);
 
-    if(ret!=0)
-    {
-        printf("[%s]==>create pthread fail\n",__FUNCTION__);
+    if (ret != 0) {
+        printf("[%s]==>create pthread fail\n", __FUNCTION__);
     }
 
 
@@ -229,10 +224,8 @@ CURL_LAST /* never use! */
 
 #endif
 
-const char* curl_easy_strerror_cn(CURLcode code)
-{
-    switch (code)
-    {
+const char *curl_easy_strerror_cn(CURLcode code) {
+    switch (code) {
         case CURLE_UNSUPPORTED_PROTOCOL:
             return "您传送给 libcurl 的网址使用了此 libcurl 不支持的协议。 可能是您没有使用的编译时选项造成了这种情况（可能是协议字符串拼写有误，或没有指定协议 libcurl 代码）。";
 
@@ -439,13 +432,12 @@ const char* curl_easy_strerror_cn(CURLcode code)
     }
 }
 
-int  main(int argc, char *argv[])
-{
-    char			sService[30],sLog[300],sServerIP[30];
-    int				read_sock, numfds;
-    fd_set			readmask;
-    struct timeval	timeout_select;
-    int             nError;
+int main(int argc, char *argv[]) {
+    char sService[30], sLog[300], sServerIP[30];
+    int read_sock, numfds;
+    fd_set readmask;
+    struct timeval timeout_select;
+    int nError;
 
 
     AIcom_ChangeToDaemon();
@@ -454,77 +446,77 @@ int  main(int argc, char *argv[])
     //SetTraceFile((char *)"UPGRADE",(char *)CONFIG_FILE);
 
     /* 与主进程建立联接 */
-    char *sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Socket",(char *)CONFIG_FILE);
-    if(sMsg==NULL) {
+    char *sMsg = AIcom_GetConfigString((char *) "Config", (char *) "Socket", (char *) CONFIG_FILE);
+    if (sMsg == NULL) {
         printf("Fail to get Socket in %s!\n", CONFIG_FILE);
-        return(AI_NG);
+        return (AI_NG);
     };
-    strcpy(sService,sMsg);
+    strcpy(sService, sMsg);
 
-    server_sock=AIEU_DomainEstablishConnection(sService);
-    printf("server_sock=%d\n",server_sock);
-    if(server_sock<0) {
-        sprintf(sLog,"UPGRADE Process : AIEU_DomainEstablishConnection %s error!",sService);
-        WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
+    server_sock = AIEU_DomainEstablishConnection(sService);
+    printf("server_sock=%d\n", server_sock);
+    if (server_sock < 0) {
+        sprintf(sLog, "UPGRADE Process : AIEU_DomainEstablishConnection %s error!", sService);
+        WriteLog((char *) RUN_TIME_LOG_FILE, sLog);
         return AI_NG;
     };
 
 
     memset(&a_dl_param, 0, sizeof(DOWNLOAD_PARAM));
-    memset(&dl_param,0, sizeof(dl_param));
+    memset(&dl_param, 0, sizeof(dl_param));
 
-  //  a_dl_param.dl_sock=server_sock;
-    dl_param.dl_sock=server_sock;
-    dl_param.is_full_pkg_update=False;
-    dl_param.status_cond=PTHREAD_COND_INITIALIZER;
-    dl_param.status_mutex=PTHREAD_MUTEX_INITIALIZER;
+    //  a_dl_param.dl_sock=server_sock;
+    dl_param.dl_sock = server_sock;
+    dl_param.is_full_pkg_update = False;
+    dl_param.status_cond = PTHREAD_COND_INITIALIZER;
+    dl_param.status_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    aa_status=AAW_CTL_DOWNLOAD_INIT;
+    aa_status = AAW_CTL_DOWNLOAD_INIT;
 
 
-   // stpcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
-   // strcat(dl_param.save_path,UPGRADE_FULL_PKG_NAME);
+    // stpcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
+    // strcat(dl_param.save_path,UPGRADE_FULL_PKG_NAME);
     // 把本进程的标识送给主进程
     PacketHead stHead;
-    memset((char *)&stHead,0,sizeof(PacketHead));
+    memset((char *) &stHead, 0, sizeof(PacketHead));
     stHead.iPacketID = PKT_CLIENT_IDENTITY;
     stHead.iRecordNum = UPGRADE_PROCESS_IDENTITY;
     stHead.lPacketSize = sizeof(PacketHead);
-    AAWANTSendPacket(server_sock, (char *)&stHead);
+    AAWANTSendPacket(server_sock, (char *) &stHead);
 
     // 初始化本程序中重要的变量
 
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
-    for(;;) {
+    for (;;) {
         FD_ZERO(&readmask);
-        FD_SET(server_sock,&readmask);
+        FD_SET(server_sock, &readmask);
         read_sock = server_sock;
 
         /* 检查通信端口是否活跃 */
-        numfds=select(read_sock+1,(fd_set *)&readmask,0,0,&timeout_select);
+        numfds = select(read_sock + 1, (fd_set *) &readmask, 0, 0, &timeout_select);
 
-        if(numfds<=0) {
+        if (numfds <= 0) {
             continue;
         };
 
         /* 主控程序发来包 */
-        if( FD_ISSET(server_sock, &readmask))	{
-            char *lpInBuffer=AAWANTGetPacket(server_sock, &nError);
-            if(lpInBuffer==NULL) {
-                if(nError == EINTR ||nError == 0) {  /* 因信号而中断 */
+        if (FD_ISSET(server_sock, &readmask)) {
+            char *lpInBuffer = AAWANTGetPacket(server_sock, &nError);
+            if (lpInBuffer == NULL) {
+                if (nError == EINTR || nError == 0) {  /* 因信号而中断 */
                     printf("signal interrupt\n");
                     continue;
                 };
                 /* 主进程关闭了联接，本程序也终止！ */
-              //  WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
+                //  WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
                 printf("close sock\n");
                 AIEU_TCPClose(server_sock);
 
 
             };
-            PacketHead *pHead = (PacketHead *)lpInBuffer;
-            switch(pHead->iPacketID) {
+            PacketHead *pHead = (PacketHead *) lpInBuffer;
+            switch (pHead->iPacketID) {
 
                 case PKT_UPGRADE_CTRL: {
                     /*
@@ -545,14 +537,15 @@ int  main(int argc, char *argv[])
                     if (upData->action == DOWNLOAD_START) {
                         printf("Upgrade:start download\n");
                         // Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_INITED);
-                        status=Aawant_Get_Upgrade_Status();
-                        if(status==AAW_CTL_DOWNLOAD_DOING){
+                        status = Aawant_Get_Upgrade_Status();
+                        if (status == AAW_CTL_DOWNLOAD_DOING) {
                             printf("It is downloading\n");
-                        } if(status==AAW_CTL_UPGRADE_DOING){
-                            printf("It is upgrading\n");
                         }
-                        else if(status==AAW_CTL_DOWNLOAD_INIT|status==AAW_CTL_UPGRADE_SUCESS|status==AAW_CTL_UPGRADE_FAIL
-                                |status==AAW_CTL_DOWNLOAD_CANCEL|status==AAW_CTL_DOWNLOAD_FAIL){
+                        if (status == AAW_CTL_UPGRADE_DOING) {
+                            printf("It is upgrading\n");
+                        } else if (status == AAW_CTL_DOWNLOAD_INIT | status == AAW_CTL_UPGRADE_SUCESS |
+                                   status == AAW_CTL_UPGRADE_FAIL
+                                   | status == AAW_CTL_DOWNLOAD_CANCEL | status == AAW_CTL_DOWNLOAD_FAIL) {
                             createDownloadPthread(a_dl_param);
                         }
 
@@ -569,39 +562,40 @@ int  main(int argc, char *argv[])
 
                     } else if (upData->action == DOWNLOAD_CANCEL) {
                         printf("Upgrade:cancel\n");
-                        Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_DOWNLOAD_CANCEL);
+                        Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_CANCEL);
 
                     } else if (upData->action == UPGRADE_START) {
                         printf("=======Upgrade:Get Upgrade Cmd========\n");
 
                         //Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
 
-                        dl_param.is_full_pkg_update=True;
-                        memset(dl_param.save_path,0,sizeof(dl_param.save_path));
-                        stpcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
-                        strcat(dl_param.save_path,UPGRADE_FULL_PKG_NAME);
+                        dl_param.is_full_pkg_update = True;
+                        memset(dl_param.save_path, 0, sizeof(dl_param.save_path));
+                        stpcpy(dl_param.save_path, UPGRADE_FULL_PKG_SAVE_PATH);
+                        strcat(dl_param.save_path, UPGRADE_FULL_PKG_NAME);
 
-                        int ret=AawantCmd_Flash_ImgData(&dl_param);
+                        int ret = AawantCmd_Flash_ImgData(&dl_param);
 
 
-                        if (ret==-1)
-                        {
+                        if (ret == -1) {
                             printf("Upgrade failed\n");
-                            Aawant_Set_Upgrade_Status(&dl_param,AAW_CTL_UPGRADE_FAIL);
+                            Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_UPGRADE_FAIL);
                             FROM_UPGRADE_DATA upgradeData;
-                            upgradeData.status=UPGRADE_FAIL;
-                            upgradeData.code=0;
+                            upgradeData.status = UPGRADE_FAIL;
+                            upgradeData.code = 0;
 
 
-                            AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
-                        } else{
+                            AAWANTSendPacket(server_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData,
+                                             sizeof(upgradeData));
+                        } else {
                             printf("Upgrade sucess\n");
                             // Aawant_Set_Upgrade_Status(E);
                             FROM_UPGRADE_DATA upgradeData;
-                            upgradeData.status=UPGRADE_FINISH_AND_REQUEST_REBOOT;
-                            upgradeData.code=0;
+                            upgradeData.status = UPGRADE_FINISH_AND_REQUEST_REBOOT;
+                            upgradeData.code = 0;
 
-                            AAWANTSendPacket(server_sock,PKT_UPGRADE_FEEDBACK,(char *)&upgradeData, sizeof(upgradeData));
+                            AAWANTSendPacket(server_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData,
+                                             sizeof(upgradeData));
                         }
 
 

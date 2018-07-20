@@ -12,14 +12,14 @@ typedef unsigned char uchar;
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint32;
-typedef unsigned long long  uint64;
+typedef unsigned long long uint64;
 
-typedef signed int     int32;
-typedef signed short    int16;
+typedef signed int int32;
+typedef signed short int16;
 
-typedef signed long long  int64;
+typedef signed long long int64;
 
-typedef uint8  boolean;
+typedef uint8 boolean;
 #define True  (1)
 #define False (0)
 
@@ -67,9 +67,9 @@ uint32 ui4_enable_all_log;
 #define printf(format, args...)                \
 do{                                            \
     if(1 == ui4_enable_all_log)                \
-	{                                      \
-		printf(format, ##args);        \
-   	}                                      \
+    {                                      \
+        printf(format, ##args);        \
+       }                                      \
 }while(0)
 
 #define DBG_PRINT(format, args...)                      \
@@ -118,15 +118,15 @@ DBG_LVL_PRINT(DBG_LEVEL_MODULE, DBG_LEVEL_INFO, stat)
 
 
 #define CHECK_FAIL(func) do\
-	{\
-		int ret = func; \
-		if(ret!=0)DBG_ERROR(("fail ret=%d\n",ret));\
-	}while(0)
+    {\
+        int ret = func; \
+        if(ret!=0)DBG_ERROR(("fail ret=%d\n",ret));\
+    }while(0)
 #define CHECK_FAIL_RET(func) do\
-	{\
-		int ret = func; \
-		if(ret!=0){DBG_ERROR(("fail ret=%d\n",ret));return ret;}\
-	}while(0)
+    {\
+        int ret = func; \
+        if(ret!=0){DBG_ERROR(("fail ret=%d\n",ret));return ret;}\
+    }while(0)
 
 /* Macro for debug abort / assert. */
 #define DBG_ABORT(_code)  do{printf("%s,%d\n",((CHAR*) __FILE__), ((UINT32) __LINE__)); pthread_exit(_code);}while(0)

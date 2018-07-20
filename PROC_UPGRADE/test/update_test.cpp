@@ -3,16 +3,17 @@
 //
 #include <../include/common.h>
 #include <../include/upg_download.h>
+
 #define Dprintf(x) printf("[%s:%d]x",__FUNCTION__,__LINE__,x)
 //#define Aprintf(x) Dprintf(__FUNCTION__,__LINE__,x)
 
-void test()
-{
+void test() {
     Dprintf("hello\n");
 }
-int main(){
+
+int main() {
 #define myurl "http://192.168.1.118/update.bin"
-    int a=4;
+    int a = 4;
     int dl_lenth;
     test();
     /*
