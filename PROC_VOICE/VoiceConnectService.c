@@ -1,8 +1,11 @@
 //
+// Created by sine on 18-7-21.
+//
+
+//
 // Created by sine on 18-7-19.
 //
 
-#include "keydef.h"
 #include "linux/input.h"
 #include "stddef.h"
 #include "stdlib.h"
@@ -26,36 +29,21 @@
 #include "cJSON.h"
 #include "pthread.h"
 
-#define INPUT_DEVICE_PATH "/dev/input"
+#include "VoiceConnectIf.h"
+
 
 int					 server_sock;		// 服务器SOCKET
 
-int KeyDevInit(char *path){
-    int fd;
-    fd=open(path,O_RDWR, 0);
-    if(fd <0){
-        printf("[%s]==>\n",__FUNCTION__);
-        return -1;
-    }
-    return fd;
-}
-
-void *keyThread(void *arg){
-
-    while(1){
+void *VoiConThread(){}
 
 
-    }
 
-}
-
-int CreateKeyThread(){
+int CreateVCThread(){
     pthread_t keyId;
-    int ret=pthread_create(&keyId,NULL,&keyThread,NULL);
+    int ret=pthread_create(&keyId,NULL,&VoiConThread,NULL);
     if(ret<0){
         printf("create thread fail\n");
     }
-
 }
 
 int  main(int argc, char *argv[])
@@ -70,7 +58,7 @@ int  main(int argc, char *argv[])
     AIcom_ChangeToDaemon();
 
     // 重定向输出
-    SetTraceFile((char *)"KEYEVENT",(char *)CONFIG_FILE);
+    SetTraceFile((char *)"VOICECONNECT",(char *)CONFIG_FILE);
 
     /* 与主进程建立联接 */
     char *sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Socket",(char *)CONFIG_FILE);
@@ -83,7 +71,7 @@ int  main(int argc, char *argv[])
     server_sock=AIEU_DomainEstablishConnection(sService);
     printf("server_sock=%d\n",server_sock);
     if(server_sock<0) {
-        sprintf(sLog,"KEYEVENT Process : AIEU_DomainEstablishConnection %s error!",sService);
+        sprintf(sLog,"VOICECONNECT Process : AIEU_DomainEstablishConnection %s error!",sService);
         WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
         return AI_NG;
     };
@@ -146,7 +134,10 @@ int  main(int argc, char *argv[])
             free(lpInBuffer);
         }/* if( FD_ISSET(IOT_sock, &readmask) ) */
 #else
-
+        int recordbuf=4096;
+        voice_decoder_VoiceRecognizer_start(recordbuf);
+        voice_decoder_VoiceRecognizer_writeBuf();
 #endif
     };
+
 }

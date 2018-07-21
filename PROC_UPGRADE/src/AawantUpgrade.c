@@ -1,6 +1,6 @@
 /********************************************************
-* FILE     : ProcAlarm.c
-* CONTENT  : 闹钟服务主程序
+* FILE     : AawantUpgrade.c
+* CONTENT  : 升级服务主程序
 *********************************************************/
 #include <stdio.h>
 #include <fcntl.h>

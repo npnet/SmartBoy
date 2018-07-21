@@ -250,6 +250,7 @@ void StartAawantServer() {
                         WriteLog((char *) RUN_TIME_LOG_FILE, sLog);
                         break;
 
+                    /*升级程序反馈回来的信息*/
                     case PKT_UPGRADE_FEEDBACK: {
                         printf("=============PKT_UPGRADE_FEEDBACK=============\n");
                         FROM_UPGRADE_DATA *updata;
@@ -272,10 +273,10 @@ void StartAawantServer() {
                             //system("reboot");
                         }
 
-
                         break;
                     }
-                    //用做测试
+
+                    /*测试程序转发给升级程序*/
                     case PKT_UPGRADE_CTRL:{
                         printf("PKT_UPGRADE_CTRL\n");
                         TO_UPGRADE_DATA *upgData;

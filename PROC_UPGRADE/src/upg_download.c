@@ -806,7 +806,7 @@ void Aawant_Clean_Download_BasicInfo(DOWNLOAD_PARAM *dl_param) {
 
 
 //int32 Aawwant_Download_OtaPackage(char *url, char *save_path, int32 upg_file_size)
-int32 Aawwant_Download_OtaPackage(DOWNLOAD_PARAM dl, char *url, char *save_path, int32 upg_file_size) {
+int32 Aawant_Download_OtaPackage(DOWNLOAD_PARAM dl, char *url, char *save_path, int32 upg_file_size) {
     int32 i4_ret = 0;
     CURL *curl = NULL;
     //DOWNLOAD_PARAM *dl_param = &a_dl_param;
@@ -871,11 +871,7 @@ int32 Awant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl) {
 
     printf("|<-------------%s:End-------------->|\n", __FUNCTION__);
     return i4_ret;
-
 }
-
-
-
 
 
 /**
@@ -929,21 +925,6 @@ int32 Aawant_Download_FullOtaPackage(DOWNLOAD_PARAM dl, char *url, char *save_pa
 
 
 int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM dl) {
-#ifdef ISNEED
-    int32 i4_ret = 0;
-    UPGRADE_DL_MSG dl_msg;
-    dl_msg.pt_msg.ui4_sender_id = MSG_FROM_UPG_CONTROL;
-    dl_msg.pt_msg.ui4_msg_type = E_UPG_CONTROL_FLASH_IMG_DONE;
-    dl_msg.dl_param = NULL;
-    i4_ret = _upgrade_download_send_msg(&dl_msg, UPG_CONTROL_THREAD_NAME);
-    if (i4_ret)
-    {
-        printf("_upgrade_download_notify_flash_done failed:%d\n", i4_ret);
-    }
-
-    return i4_ret;
-#endif
-
     FROM_UPGRADE_DATA upgradeData;
 
     upgradeData.status = UPGRADE_FINISH_AND_REQUEST_REBOOT;
@@ -967,7 +948,6 @@ int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, bool
     if (is_full_pkg) {
 
         if (0 == access(ZIP_PATH, F_OK)) {
-
             if (0 == remove(ZIP_PATH)) {
                 printf("remove existing %s \n", ZIP_PATH);
             } else {
@@ -983,9 +963,7 @@ int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, bool
         }
 
     } else {
-
-
-        ret = Aawwant_Download_OtaPackage(dl, g_url, UPGRADE_OTA_FILE_SAVE_PATH, 0);
+        ret = Aawant_Download_OtaPackage(dl, g_url, UPGRADE_OTA_FILE_SAVE_PATH, 0);
         if (ret) {
             printf("[%s]==>Download OtaPackage failed,%d\n", __FUNCTION__, ret);
             return ret;
@@ -998,7 +976,6 @@ int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, bool
     {
         printf("[%s]=Notify Flash Done failed\n",__FUNCTION__);
     }
-
     printf("[%s]==>ret=%d\n",__FUNCTION__,ret);
     */
     return ret;
