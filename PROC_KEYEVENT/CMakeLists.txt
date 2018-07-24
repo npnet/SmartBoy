@@ -15,9 +15,9 @@ endif()
 INCLUDE_DIRECTORIES(../include)
 INCLUDE_DIRECTORIES(include)
 
-#AUX_SOURCE_DIRECTORY(src DIR_SRCS)
-#ADD_EXECUTABLE(Keyed ${DIR_SRCS})
-ADD_EXECUTABLE(Keyed src/Keyed.c)
+AUX_SOURCE_DIRECTORY(src DIR_SRCS)
+ADD_EXECUTABLE(Keyed ${DIR_SRCS})
+#ADD_EXECUTABLE(Keyed src/Keyed.c)
 target_link_libraries(Keyed aawant pthread)
 
 

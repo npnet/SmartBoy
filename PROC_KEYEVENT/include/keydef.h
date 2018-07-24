@@ -21,4 +21,12 @@ typedef uint8  boolean;
 #define False (0)
 
 
+#ifndef NULL
+#ifdef __cplusplus
+#define NULL 0
+#else
+#define NULL ((void *)0)
+#endif
+#endif
+
 #endif //SMARTBOY_KEYDEF_H

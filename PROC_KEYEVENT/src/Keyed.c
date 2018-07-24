@@ -29,6 +29,7 @@
 #define INPUT_DEVICE_PATH "/dev/input"
 
 int					 server_sock;		// 服务器SOCKET
+static struct pollfd *ufds;
 
 int KeyDevInit(char *path){
     int fd;
@@ -58,6 +59,49 @@ int CreateKeyThread(){
 
 }
 
+#if 0
+static int read_notify(const char *dirname, int nfd, int print_flags)
+{
+    int res;
+    char devname[PATH_MAX];
+    char *filename;
+    char event_buf[512];
+    int event_size;
+    int event_pos = 0;
+    struct inotify_event *event;
+
+    res = read(nfd, event_buf, sizeof(event_buf));
+    if(res < (int)sizeof(*event)) {
+        if(errno == EINTR)
+            return 0;
+        fprintf(stderr, "could not get event, %s\n", strerror(errno));
+        return 1;
+    }
+    //printf("got %d bytes of event information\n", res);
+
+    strcpy(devname, dirname);
+    filename = devname + strlen(devname);
+    *filename++ = '/';
+
+    while(res >= (int)sizeof(*event)) {
+        event = (struct inotify_event *)(event_buf + event_pos);
+        //printf("%d: %08x \"%s\"\n", event->wd, event->mask, event->len ? event->name : "");
+        if(event->len) {
+            strcpy(filename, event->name);
+            if(event->mask & IN_CREATE) {
+                open_device(devname, print_flags);
+            }
+            else {
+                close_device(devname, print_flags);
+            }
+        }
+        event_size = sizeof(*event) + event->len;
+        res -= event_size;
+        event_pos += event_size;
+    }
+    return 0;
+}
+#endif
 int  main(int argc, char *argv[])
 {
     char			sService[30],sLog[300],sServerIP[30];
@@ -103,8 +147,11 @@ int  main(int argc, char *argv[])
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
 
-    for(;;) {
+
+
 #if 0
+    for(;;) {
+
         FD_ZERO(&readmask);
         FD_SET(server_sock,&readmask);
         read_sock = server_sock;
@@ -145,8 +192,45 @@ int  main(int argc, char *argv[])
             };
             free(lpInBuffer);
         }/* if( FD_ISSET(IOT_sock, &readmask) ) */
-#else
 
-#endif
+
+
     };
+#endif
+#if 0
+    while(1){
+
+        poll(ufds, nfds, -1);
+        //printf("poll %d, returned %d\n", nfds, pollres);
+        if(ufds[0].revents & POLLIN) {
+            read_notify(device_path, ufds[0].fd, print_flags);
+        }
+        for(i = 1; i < nfds; i++) {
+            if(ufds[i].revents) {
+                if(ufds[i].revents & POLLIN) {
+                    res = read(ufds[i].fd, &event, sizeof(event));
+                    if(res < (int)sizeof(event)) {
+                        fprintf(stderr, "could not get event\n");
+                        return 1;
+                    }
+                    if(get_time) {
+                        printf("[%8ld.%06ld] ", event.time.tv_sec, event.time.tv_usec);
+                    }
+                    if(print_device)
+                        printf("%s: ", device_names[i]);
+                    print_event(event.type, event.code, event.value, print_flags);
+                    if(sync_rate && event.type == 0 && event.code == 0) {
+                        int64_t now = event.time.tv_sec * 1000000LL + event.time.tv_usec;
+                        if(last_sync_time)
+                            printf(" rate %lld", 1000000LL / (now - last_sync_time));
+                        last_sync_time = now;
+                    }
+                    printf("%s", newline);
+                    if(event_count && --event_count == 0)
+                        return 0;
+                }
+            }
+        }
+    }
+#endif
 }
