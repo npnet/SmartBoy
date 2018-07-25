@@ -1,6 +1,5 @@
 ### 傅里叶变换
 
-
-\begin{align}
+```math
     s=\sum_1^n{n_i}
-\end{align}
+```
