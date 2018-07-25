@@ -102,6 +102,9 @@ static int read_notify(const char *dirname, int nfd, int print_flags)
     return 0;
 }
 #endif
+
+
+
 int  main(int argc, char *argv[])
 {
     char			sService[30],sLog[300],sServerIP[30];

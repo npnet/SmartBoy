@@ -713,6 +713,7 @@ static const char * const * const kNames[EV_MAX + 1] = {
     [EV_FF] = kForce,            [EV_FF_STATUS] = kForcestatus,
 };
 #endif
+#if 0
 static inline const char* typename(unsigned int type)
 {
     return (type <= EV_MAX && 
@@ -726,7 +727,7 @@ static inline const char* codename(unsigned int type, unsigned int code)
             kNames[type] && 
             kNames[type][code]) ? kNames[type][code] : "?";
 }
-
+#endif
 /**
  *
  * @param start
@@ -736,6 +737,7 @@ int time_exceed(struct timeval start)
 {
     struct timeval currentTime;
     uint32 ui8Offset = 0;
+    FUNC_START
 
     gettimeofday(&currentTime, NULL);
 
@@ -748,6 +750,7 @@ int time_exceed(struct timeval start)
     {
         return False;
     }
+    FUNC_END
 }
 
 
@@ -762,10 +765,11 @@ static void *key_long_press_thread_routine(void *arg)
     //int32 i4_ret = UI_OK;
     int32 i4_ret=0;
     int32 long_key_msg;
-
+    FUNC_START
     while (1)
     {
         pthread_mutex_lock(&gmutex);
+        //线程等待
         pthread_cond_wait(&gkeycond, &gmutex);
 
         gettimeofday(&start, NULL);
@@ -777,44 +781,43 @@ static void *key_long_press_thread_routine(void *arg)
             if (time_exceed(start))
             {
                 /* key long press process */
-                printf("<user_interface> key long press process,KeyValueRecord = %d\n",gKeyValueRecord);
+                printf("key long press process,KeyValueRecord = %d\n",gKeyValueRecord);
                 gKeyLongPressed = True;
                 gKeyPressed = False; //add by lei.xiao
-                #ifdef CONFIG_ADAPTOR_APP_CTRL
-                    app_ctrl_key_long_press_process((uint32)gKeyValueRecord);
-                #else
+
                     switch (gKeyValueRecord)
                     {
 
-                    case KEY_VOLUMEUP:
-                         // long_key_msg = SM_BODY_UI_LONG_VOLUMEUP;
-                         // user_interface_send_key_to_assistant(long_key_msg);
+                    case KEY_WAKEUP:
+
+                        printf("KEY p long press\n");
                           break;
                     default:
-                          printf("<user_interface>[lei] key long press isn't MUTE/BLUTOOTH/POWER/VOLUME+/VOLUME-");
+                          printf("key long press isn't MUTE/BLUTOOTH/POWER/VOLUME+/VOLUME-\n");
                           break;
                     }
-                #endif /* CONFIG_ADAPTOR_APP_CTRL */
-                printf("<user_interface>[lei]send long key=%d to sm\n", gKeyValueRecord);
-                //user_interface_send_key_to_sm(long_key_msg);/*send long key to sm*/
-                //i4_ret = u_acfg_factory_reset();
+
+                printf("long key=%d\n", gKeyValueRecord);
+
                 if (0 != i4_ret)
                 {
-                    printf("<user_interface>[lei]end long key to sm fail(%d)!!\n", i4_ret);
+                    printf("[lei]end long key to sm fail(%d)!!\n", i4_ret);
                 }
             }
         }
         pthread_mutex_unlock(&gmutex);
     }
+    FUNC_END
+
     return NULL;
 }
 
-void long_press_control()
+void Long_Press_Ctrl()
 {
     int ret = 0;
     pthread_attr_t attr;
     pthread_t key_long_press_thread;
-
+    FUNC_START
     pthread_mutex_init(&gmutex, NULL);
     pthread_cond_init(&gkeycond, NULL);
     pthread_attr_init(&attr);
@@ -822,43 +825,55 @@ void long_press_control()
     ret = pthread_create(&key_long_press_thread, &attr, key_long_press_thread_routine, NULL);
     if (ret != 0)
     {
-        printf(("create key pthread failed.\n"));
+        printf("create key pthread failed.\n");
     }
+    FUNC_END
 }
 
-static int is_keypad_device(const char *filename)
+static void *Gesture_Press_Thread_Handle(void *arg){
+
+}
+
+void Gesture_Press_Ctrl(){
+
+}
+
+static int is_keypad_device( char *filename)
 {
     int i;
     char name[PATH_MAX];
     char *strpos = NULL;
 
+    FUNC_START
     for (i = 0; i < (int) ARRAY_SIZE(keypad_device_name); i++)
     {
-        printf(("check device name: %s v.s. %s \n", filename, keypad_device_name[i]));
+        printf("check device name: %s v.s. %s \n", filename, keypad_device_name[i]);
         strpos = strcasestr(filename, keypad_device_name[i]);
         if (strpos != NULL)
         {
             return True;
         }
     }
+    FUNC_END
     return False;
 }
 
-static int is_irrx_device(const char *filename)
+static int is_irrx_device( char *filename)
 {
     int i;
     char name[PATH_MAX];
     char *strpos = NULL;
-
+    FUNC_START
     for (i = 0; i < (int) ARRAY_SIZE(mtk_IRRX_device_name); i++)
     {
-        printf(("check device name: %s v.s. %s \n", filename, mtk_IRRX_device_name[i]));
+        printf("check device name: %s v.s. %s \n", filename, mtk_IRRX_device_name[i]);
         strpos = strcasestr(filename, mtk_IRRX_device_name[i]);
         if (strpos != NULL)
         {
             return True;
         }
     }
+    FUNC_END
     return False;
 }
 
@@ -879,21 +894,21 @@ static int open_device(const char *device)
     char idstr[BUFFER_LENGTH_S];
     struct input_id id;
     int print_flags = KEY_RECORD_MASK;
-
+    FUNC_START
     fd = open(device, O_RDWR);
     if (fd < 0)
     {
-        printf(("could not open %s, %s\n", device, strerror(errno)));
+        printf("could not open %s, %s\n", device, strerror(errno));
         return -1;
     }
     if (ioctl(fd, EVIOCGVERSION, &version))
     {
-        printf(("could not get driver version for %s, %s\n", device, strerror(errno)));
+        printf("could not get driver version for %s, %s\n", device, strerror(errno));
         return -1;
     }
     if (ioctl(fd, EVIOCGID, &id))
     {
-        printf(("could not get driver id for %s, %s\n", device, strerror(errno)));
+        printf("could not get driver id for %s, %s\n", device, strerror(errno));
         return -1;
     }
     name[sizeof(name) - 1] = '\0';
@@ -903,7 +918,7 @@ static int open_device(const char *device)
     {
         name[0] = '\0';
     }
-    printf("[lei]device=%s,open_device_name=%s \n", device,name);
+    printf("device=%s,open_device_name=%s \n", device,name);
 
     if (ioctl(fd, EVIOCGPHYS(sizeof(location) - 1), &location) < 1)
     {
@@ -916,14 +931,14 @@ static int open_device(const char *device)
     new_ufds = (struct pollfd*)realloc(gufds, sizeof(gufds[0]) * (gnfds + 1));
     if (NULL == new_ufds)
     {
-        printf(("out of memory\n"));
+        printf("out of memory\n");
         return -1;
     }
     gufds = new_ufds;
     new_device_names = (char**)realloc(gdevice_names, sizeof(gdevice_names[0]) * (gnfds + 1));
     if (NULL == new_device_names)
     {
-        printf(("out of memory\n"));
+        printf("out of memory\n");
         return -1;
     }
     gdevice_names = new_device_names;
@@ -931,6 +946,9 @@ static int open_device(const char *device)
     gufds[gnfds].events = POLLIN;
     gdevice_names[gnfds] = strdup(device);
 
+    /**
+     *
+     */
     if (is_keypad_device(name))
     {
         device_type_nfds[gnfds] = KEYPAD_DEVICE_TYPE;
@@ -940,6 +958,7 @@ static int open_device(const char *device)
         device_type_nfds[gnfds] = IR_DEVICE_TYPE;
     }
     gnfds++;
+    FUNC_END
 
     return 0;
 }
@@ -947,7 +966,7 @@ static int open_device(const char *device)
 int close_device(const char *device)
 {
     int i;
-
+    FUNC_START
     for (i = 1; i < gnfds; i++) {
         if (!strcmp(gdevice_names[i], device))
         {
@@ -960,7 +979,8 @@ int close_device(const char *device)
             return 0;
         }
     }
-    printf(("remote device: %s not found\n", device));
+    printf("remote device: %s not found\n", device);
+    FUNC_END
     return -1;
 }
 
@@ -973,7 +993,7 @@ static int read_notify(const char *dirname, int nfd)
     int event_size;
     int event_pos = 0;
     struct inotify_event *event;
-
+    FUNC_START
     res = read(nfd, event_buf, sizeof(event_buf));
     if (res < (int)sizeof(*event))
     {
@@ -981,7 +1001,7 @@ static int read_notify(const char *dirname, int nfd)
         {
             return 0;
         }
-        printf(("could not get event, %s\n", strerror(errno)));
+        printf("could not get event, %s\n", strerror(errno));
         return 1;
     }
 
@@ -1004,6 +1024,7 @@ static int read_notify(const char *dirname, int nfd)
         res -= event_size;
         event_pos += event_size;
     }
+    FUNC_END
     return 0;
 }
 
@@ -1017,6 +1038,7 @@ static int scan_dir(const char *dirname)
     DIR *dir;
     struct dirent *de;
 
+    FUNC_START
     dir = opendir(dirname);
     if (NULL == dir)
     {
@@ -1035,18 +1057,20 @@ static int scan_dir(const char *dirname)
             continue;
         }
         strcpy(filename, de->d_name);
-        printf(("%s(), open_device %s\n", __FUNCTION__, devname));
+        printf("open_device %s\n",devname);
         open_device(devname);
     }
     closedir(dir);
+    FUNC_END
     return 0;
 }
 
 
 
 
-void *user_interface_key_event_monitor_thread(void *arg)
+void *key_event_monitor_thread(void *arg)
 {
+    FUNC_START
     int res, i, j;
     int pollres;
     const char *device = NULL;
@@ -1054,31 +1078,50 @@ void *user_interface_key_event_monitor_thread(void *arg)
     int32 irbtnMsg;
 
     glongPressDuration = 500;
-    long_press_control();
+    /**
+     * 开启长按键判断线程
+     */
+    Long_Press_Ctrl();
+
+    /**
+     * 手势判断
+     */
+    Gesture_Press_Ctrl();
 
     gnfds = 1;
     gufds = (struct pollfd *)calloc(1, sizeof(gufds[0]));
     gufds[0].fd = inotify_init();
     gufds[0].events = POLLIN;
 
+    /**
+     *使用inotify机制监控文件或目录
+     */
     gwd = inotify_add_watch(gufds[0].fd, INPUT_DEVICE_PATH, IN_DELETE | IN_CREATE);
     if (gwd < 0)
     {
-        printf(("could not add watch for %s, %s\n", INPUT_DEVICE_PATH, strerror(errno)));
+        printf("could not add watch for %s, %s\n", INPUT_DEVICE_PATH, strerror(errno));
     }
     res = scan_dir(INPUT_DEVICE_PATH);
     if (res < 0)
     {
-        printf(("scan dir failed for %s\n", INPUT_DEVICE_PATH));
+        printf("scan dir failed for %s\n", INPUT_DEVICE_PATH);
     }
 
+
+    /*
+     *
+     */
     while (1)
     {
+        //pollres > 0,gufds准备好好读、写或出错状态
         pollres = poll(gufds, gnfds, -1);
+
+        //POLLIN:普通或优先级带数据可读
         if (gufds[0].revents & POLLIN)
         {
             read_notify(INPUT_DEVICE_PATH, gufds[0].fd);
         }
+
         for (i = 1; i < gnfds; i++)
         {
             if (gufds[i].revents)
@@ -1088,61 +1131,64 @@ void *user_interface_key_event_monitor_thread(void *arg)
                     res = read(gufds[i].fd, &event, sizeof(event));
                     if (res < (int)sizeof(event))
                     {
-                        printf(("could not get event\n"));
+                        printf("could not get event\n");
                     }
-                    /*keypad handle flow*/
+
+                    /**
+                     * 按键处理
+                     */
                     if (KEYPAD_DEVICE_TYPE == device_type_nfds[i] && EV_KEY == event.type)
                     {
                        //printf("KeyValueRecord=%d \n",KeyValueRecord);
+                        /**
+                         * 按键按下处理
+                         */
                         if (1 == event.value)   /* key press process */
                         {
-                          if ((KEY_MUTE == event.code ||
-                             KEY_MICMUTE == event.code || //add by yuyun
-                             KEY_BLUETOOTH == event.code ||
-                             FACTORY_RESET == event.code ||//adjust by yuyun 0707
-                             KEY_VOLUMEDOWN == event.code ||
-                             KEY_VOLUMEUP == event.code ||
-                             KEY_POWER == event.code) &&
-                             KEY_RECORD_MASK == gKeyValueRecord)
-
-                          {
-                              printf("<user_interface> key code = %d (%s), value = %d \n",
-                                     event.code, codename(event.type, event.code), event.value);
-
-                              printf("<user_interface> KEY pressed \n");
-
+                            if ((KEY_WAKEUP == event.code || KEY_VOLUMEUP == event.code ||
+                             KEY_POWER == event.code) && KEY_RECORD_MASK == gKeyValueRecord)
+                            {
+                              mprintf("[%s]==>key code=%d,value%d\n",__FUNCTION__,event.code,event.value);
+//                              printf("<user_interface> key code = %d (%s), value = %d \n",
+//                                     event.code, codename(event.type, event.code), event.value);
                               gKeyPressed = True;
                               gKeyLongPressed = False;  /* long press flag, handle in the function key_long_press_thread_routine */
                               gKeyValueRecord = event.code;
                               pthread_cond_signal(&gkeycond);/*trigger long key thread to start time record*/
-                          }
+                            } else if(KEY_A==event.code||KEY_B==event.code||
+                                    KEY_C==event.code||KEY_D==event.code||
+                                    KEY_E==event.code||KEY_F==event.code||
+                                    KEY_G==event.code||KEY_H==event.code||
+                                    KEY_I==event.code||KEY_J==event.code||
+                                    KEY_J==event.code||KEY_K==event.code||
+                                    KEY_L==event.code)
+                            {
+
+                            }
 
                         }
-                        else    /* key release process */
+                        else    /* 按键释放处理 */
                         {
-                          /*so far, only handle the case of one key press, if other key release, don't care it*/
-                          if (gKeyValueRecord == event.code)
-                          {
-                              printf("<user_interface> key code = %d (%s), value = %d \n",
-                              event.code, codename(event.type, event.code), event.value);
+                            /*so far, only handle the case of one key press, if other key release, don't care it*/
+                            if (gKeyValueRecord == event.code)
+                            {
+ //                             printf("<user_interface> key code = %d (%s), value = %d \n",
+//                              event.code, codename(event.type, event.code), event.value);
 
-                              printf("<user_interface> KEY released \n");
+                                printf(" KEY released \n");
+                                gKeyPressed = False;    /* long press flag clear */
+                                gKeyValueRecord = KEY_RECORD_MASK;
+                                if (!gKeyLongPressed)
+                                {
 
-                              gKeyPressed = False;    /* long press flag clear */
-                              gKeyValueRecord = KEY_RECORD_MASK;
-                              if (!gKeyLongPressed)
-                              {
-                                  printf("<user_interface>send short key to sm: key code = %d (%s), value = %d \n",
-                                         event.code, codename(event.type, event.code), event.value);
-                                  #ifdef CONFIG_ADAPTOR_APP_CTRL
-                                      app_ctrl_key_process((uint32)event.code,event.value);
-                                  #else
-                                   //   user_interface_key_process(event.code);
-                                  #endif /* CONFIG_ADAPTOR_APP_CTRL */
-                              }
-                          }
+                                }
+                            }
                         }
                     }
+
+                    /**
+                     * 针对IR设备（猜测是无线键盘鼠标之类，项目中用不到)
+                     */
                     if (IR_DEVICE_TYPE == device_type_nfds[i] && EV_KEY == event.type)
                     {
                         if (1 == event.value) //IRRX BTN press down
@@ -1176,11 +1222,7 @@ void *user_interface_key_event_monitor_thread(void *arg)
                                         }
                                         printf("<user_interface>%s,send IR to user_inter handle.\n",
                                                ir_sm_map[j].SM_MSG_NAME);
-                                        #ifdef CONFIG_ADAPTOR_APP_CTRL
-                                            app_ctrl_key_process((uint32)event.code,event.value);
-                                        #else
-//                                            user_interface_key_process(irbtnMsg);
-                                        #endif /* CONFIG_ADAPTOR_APP_CTRL */
+
                                     }
                                     break;
                                 }
@@ -1191,6 +1233,20 @@ void *user_interface_key_event_monitor_thread(void *arg)
             }
         }
     }
+    FUNC_END
+}
+
+
+int create_KeyThread(){
+    pthread_t keythread;
+    FUNC_START
+    int ret=pthread_create(&keythread,NULL,key_event_monitor_thread,NULL);
+    if(ret){
+        printf("creat key thread fail\n");
+    }
+    FUNC_END
+    return 0;
+
 }
 
 //#ifdef __cplusplus

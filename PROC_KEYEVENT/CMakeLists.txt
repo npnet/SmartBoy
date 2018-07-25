@@ -18,7 +18,13 @@ INCLUDE_DIRECTORIES(include)
 AUX_SOURCE_DIRECTORY(src DIR_SRCS)
 ADD_EXECUTABLE(Keyed ${DIR_SRCS})
 #ADD_EXECUTABLE(Keyed src/Keyed.c)
-target_link_libraries(Keyed aawant pthread)
+TARGET_LINK_LIBRARIES(Keyed aawant pthread)
 
+INCLUDE_DIRECTORIES(../include)
+INCLUDE_DIRECTORIES(include)
+
+
+ADD_EXECUTABLE(testd test/test.c src/user_interface_key.c)
+TARGET_LINK_LIBRARIES(testd pthread)
 
 
