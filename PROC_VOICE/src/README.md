@@ -1,6 +1,6 @@
 ### 傅里叶变换
 
 
-$$
-s=\sum_1^n{n_i}
-$$
+\begin{align}
+    s=\sum_1^n{n_i}
+\end{align}
