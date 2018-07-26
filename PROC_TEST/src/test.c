@@ -82,6 +82,22 @@ void test_upgrade(){
 
 }
 
+void test_led(){
+
+}
+
+void test_key(){
+
+}
+
+void test_voice_connect(){
+
+}
+
+void test_bt_connect(){
+
+}
+
 
 
 

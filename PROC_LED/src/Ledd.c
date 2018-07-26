@@ -26,38 +26,21 @@
 #include "cJSON.h"
 #include "pthread.h"
 
-#define INPUT_DEVICE_PATH "/dev/input"
+#define LED_DEVICE_PATH "/dev/input"
 
 int					 server_sock;		// 服务器SOCKET
-static struct pollfd *ufds;
 
-int KeyDevInit(char *path){
-    int fd;
-    fd=open(path,O_RDWR, 0);
-    if(fd <0){
-        printf("[%s]==>\n",__FUNCTION__);
-        return -1;
-    }
-    return fd;
+int Led_init(){
+//    int fd=open(LED_DEVICE_PATH);
+//    if
+    return 0;
 }
 
-void *keyThread(void *arg){
-
-    while(1){
-
-
-    }
-
+int Led_Ctrl(int mode,int value){
+    printf("[%s]===>\n",__FUNCTION__);
+    return 0;
 }
 
-int CreateKeyThread(){
-    pthread_t keyId;
-    int ret=pthread_create(&keyId,NULL,&keyThread,NULL);
-    if(ret<0){
-        printf("create thread fail\n");
-    }
-
-}
 
 
 int  main(int argc, char *argv[])
@@ -72,7 +55,7 @@ int  main(int argc, char *argv[])
     AIcom_ChangeToDaemon();
 
     // 重定向输出
-    SetTraceFile((char *)"KEYEVENT",(char *)CONFIG_FILE);
+    SetTraceFile((char *)"LED",(char *)CONFIG_FILE);
 
     /* 与主进程建立联接 */
     char *sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Socket",(char *)CONFIG_FILE);
@@ -85,18 +68,17 @@ int  main(int argc, char *argv[])
     server_sock=AIEU_DomainEstablishConnection(sService);
     printf("server_sock=%d\n",server_sock);
     if(server_sock<0) {
-        sprintf(sLog,"KEYEVENT Process : AIEU_DomainEstablishConnection %s error!",sService);
+        sprintf(sLog,"LED Process : AIEU_DomainEstablishConnection %s error!",sService);
         WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
         return AI_NG;
     };
-
 
 
     // 把本进程的标识送给主进程
     PacketHead stHead;
     memset((char *)&stHead,0,sizeof(PacketHead));
     stHead.iPacketID = PKT_CLIENT_IDENTITY;
-    stHead.iRecordNum = KEY_PROCESS_IDENTITY;
+    stHead.iRecordNum = LED_PROCESS_IDENTITY;
     stHead.lPacketSize = sizeof(PacketHead);
     AAWANTSendPacket(server_sock, (char *)&stHead);
 
@@ -104,10 +86,6 @@ int  main(int argc, char *argv[])
 
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
-
-
-
-    CreateKeyThread();
 
     for(;;) {
 
@@ -135,46 +113,33 @@ int  main(int argc, char *argv[])
                 printf("close sock\n");
                 AIEU_TCPClose(server_sock);
 
-            };
 
+            };
+            PacketHead *pHead = (PacketHead *)lpInBuffer;
+            switch(pHead->iPacketID) {
+
+                case PKT_LED_CTRL: {
+                    LED_CTL ledCtl;
+                    LED_CTRL_FEEDBACK ledBack;
+                    int result;
+                    ledCtl = (LED_CTL *) (lpInBuffer + sizeof(PacketHead));
+                    if(ledCtl.mode==1){
+                        result=Led_Ctrl(ledCtl.mode,ledCtl.value);
+                    }
+
+                    ledBack.result = result;
+
+                    AAWANTSendPacket(server_sock, PKT_LED_FEEDBACK, (char *) &ledBack,
+                                     sizeof(ledBack));
+                    break;
+                }
+                default:
+                    //WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");printf("upgraded Process : Receive unknown message from Master Process!\n");
+                    break;
+            };
+            free(lpInBuffer);
         }/* if( FD_ISSET(IOT_sock, &readmask) ) */
 
     };
-#endif
-#if 0
-    while(1){
 
-        poll(ufds, nfds, -1);
-        //printf("poll %d, returned %d\n", nfds, pollres);
-        if(ufds[0].revents & POLLIN) {
-            read_notify(device_path, ufds[0].fd, print_flags);
-        }
-        for(i = 1; i < nfds; i++) {
-            if(ufds[i].revents) {
-                if(ufds[i].revents & POLLIN) {
-                    res = read(ufds[i].fd, &event, sizeof(event));
-                    if(res < (int)sizeof(event)) {
-                        fprintf(stderr, "could not get event\n");
-                        return 1;
-                    }
-                    if(get_time) {
-                        printf("[%8ld.%06ld] ", event.time.tv_sec, event.time.tv_usec);
-                    }
-                    if(print_device)
-                        printf("%s: ", device_names[i]);
-                    print_event(event.type, event.code, event.value, print_flags);
-                    if(sync_rate && event.type == 0 && event.code == 0) {
-                        int64_t now = event.time.tv_sec * 1000000LL + event.time.tv_usec;
-                        if(last_sync_time)
-                            printf(" rate %lld", 1000000LL / (now - last_sync_time));
-                        last_sync_time = now;
-                    }
-                    printf("%s", newline);
-                    if(event_count && --event_count == 0)
-                        return 0;
-                }
-            }
-        }
-    }
-#endif
 }

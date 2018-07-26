@@ -22,17 +22,21 @@
 #define  ALARM_FIELD_SIZE    80        // 闹钟ID最大长度
 
 // 各进程身份标识
-#define  IOT_PROCESS_IDENTITY        1        //	IOT进程
-#define  ALARM_PROCESS_IDENTITY        2        //  闹钟进程
-#define  PLAY_PROCESS_IDENTITY        3        //  播放进程
-#define  UPGRADE_PROCESS_IDENTITY   4           //升级进程
-#define  MAIN_PROCESS_IDENTITY      5           //主进程
+#define  IOT_PROCESS_IDENTITY           1        //IOT进程
+#define  ALARM_PROCESS_IDENTITY         2        //闹钟进程
+#define  PLAY_PROCESS_IDENTITY          3        //播放进程
+#define  UPGRADE_PROCESS_IDENTITY       4        //升级进程
+#define  MAIN_PROCESS_IDENTITY          5        //主进程
+#define  LED_PROCESS_IDENTITY           6        //led进程
+#define  KEY_PROCESS_IDENTITY           7        //按键事件进程
+#define  VOICE_CONNECT_PROCESS_IDENTITY 8        //声音联网进程
+#define  BT_CONNECT_PROCESS_IDENTITY    9        //蓝牙联网进程
 
 // 各进程用的信号灯键值（要保证各进程用的不同且不与系统中其他进程使用的冲突）
 #define  ALARM_SEM_KEY        100        // 闹钟管理的信号灯键值
-#define  IOT_SEM_KEY        101        // 闹钟管理的信号灯键值
+#define  IOT_SEM_KEY          101        // 闹钟管理的信号灯键值
 
-#define URLSIZE             256
+#define  URLSIZE              256
 /*********************************************************************
 *  数据包ID定义                                                      *
 *********************************************************************/
@@ -75,6 +79,26 @@
 //upgraded进程--->主控进程
 #define PKT_UPGRADE_FEEDBACK    204         //升级信息返回
 
+
+//主控进程 ---> ledd进程
+#define PKT_LED_CTRL            205         //系统升级
+
+//ledd进程--->主控进程
+#define PKT_LED_FEEDBACK        206         //升级信息返回
+
+
+//keyed--->主控进程
+#define PKT_KEY_EVENT           207         //按键事件
+
+//
+#define PKT_VOICE_CONNECT       209          //声音联网
+
+
+#define PKT_BT_CONNECT          211         //蓝牙联网
+
+
+
+//
 /*********************************************************************
 *  数据包体定义                                                      *
 *********************************************************************/
@@ -198,6 +222,32 @@ typedef struct FROM_UPGRADE_DATA_T{
     UPGRADE_STATUS status;
     int code;       //1:下载成功 2:
 }FROM_UPGRADE_DATA;
+
+typedef struct LED_CTRL_T{
+    int mode;
+    int value;
+}LED_CTL;
+
+typedef struct LED_CTRL_FEEDBACK_T{
+    int result; //-1：失败 2:成功
+}LED_CTRL_FEEDBACK;
+
+typedef struct KEY_EVENT_t{
+    int type;
+    int code;
+
+}KEY_EVENT;
+
+typedef struct CONNECT_T{
+    char userID[256];
+    char ssid[256]; //WIFI
+    char password[256];
+    float longitude;
+    float latitude;
+};
+
+
+
 // 闹钟设置的JASON数据格式
 struct sJSON_Data {
     char sJsonString[BUFSIZE * 2];

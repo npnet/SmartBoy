@@ -9,7 +9,7 @@
 #include "stdio.h"
 #include "string.h"
 
-#include "../include/voice_encoder_VoicePlayer.h"
+//#include "jni/voice_encoder_VoicePlayer.h"
 
 
 #include "../include/voicePlay.h"
@@ -34,7 +34,7 @@ static int recognizerSampleRate = 44100;
 char *javaBuf = NULL;
 
 #define MYPLAYER
-
+#if 0
 void playerStart(void *_listener) {
     /*
     printf("playerStart");
