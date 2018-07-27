@@ -23,6 +23,8 @@
 int server_sock;        // 服务器SOCKET
 DOWNLOAD_PARAM dl_param;
 int status;
+int whatisUpgdoing;/
+int whatisMpdoing;
 /*
 //空闲
 #define AAWANT_SYSTEM_IDLE_TASK 601
@@ -48,7 +50,28 @@ int status;
 //系统正在执行指令动作
 #define AAWANT_SYSTEM_COMMAND_CONTROL 608
 
+
+
+typedef enum{
+    AAWANT_SYSTEM_IDLE_TASK,
+    AAWANT_SYSTEM_AUDIO_TASK
+    AAWANT_SYSTEM_TTS_TASK
+    AAWANT_SYSTEM_ALARM_TASK
+    AAWANT_SYSTEM_NETCONFIG_TASK
+    AAWANT_SYSTEM_MSC_RECOGNIZE
+    AAWANT_SYSTEM_REQUEST_SERVLET
+    AAWANT_SYSTEM_COMMAND_CONTROL
+};
 */
+
+void SetMainProcessStatus(int status)
+{
+    whatisMpdoing=status;
+}
+
+int GetMainProcessStatus(){
+    return whatisMpdoing;
+}
 
 /*
  * {
@@ -545,7 +568,7 @@ int main(int argc, char *argv[]) {
     PacketHead stHead;
     memset((char *) &stHead, 0, sizeof(PacketHead));
     stHead.iPacketID = PKT_CLIENT_IDENTITY;
-    stHead.iRecordNum = UPGRADE_PROCESS_IDENTITY;
+    stHead.iRecordNum = UPGRAGE_PROCESS_IDENTITY;
     stHead.lPacketSize = sizeof(PacketHead);
     AAWANTSendPacket(server_sock, (char *) &stHead);
 
@@ -669,16 +692,27 @@ int main(int argc, char *argv[]) {
 
                     break;
             #endif
-                case  PKT_GET_SYSTEMTASK_STATUS:
+                case  PKT_GET_SYSTEMTASK_STATUS: {
+                    int sysStatus;
+                    sysStatus = (int *) (lpInBuffer + sizeof(PacketHead));
+                    if(sysStatus==)
+                    {}
                     break;
-
+                }
 
                 case  PKT_VERSION_UPDATE: {
                     struct UpdateInfoMsg_Iot_Data *updateData;
+                    int st;
                     updateData = (struct UpdateInfoMsg_Iot_Data *) (lpInBuffer + sizeof(PacketHead));
                     strcpy(dl_param.url,updateData->updateUrl);
                     strcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
-                    createDownloadPthread();
+                    st=GetMainProcessStatus();
+                    Aawant_Get_Upgrade_Status();
+                    //检测当前状态，避免多次收到这个包，重复创建线程
+                    if()
+                    {
+                        createDownloadPthread();
+                    }
                     break;
                 }
                 case PKT_ROBOT_WIFI_CONNECT: {
