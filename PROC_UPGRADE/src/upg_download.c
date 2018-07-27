@@ -458,6 +458,7 @@ size_t Aawant_Download_FullOtaPackage_CB(void *ptr, size_t size, size_t nmemb, v
 }
 
 
+
 size_t Aawant_Download_Ota_Package_CB(void *ptr, size_t size, size_t nmemb, void *stream) {
     int32 i4_ret = 0;
     DOWNLOAD_PARAM *dl_param = (DOWNLOAD_PARAM *) stream;

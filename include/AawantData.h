@@ -328,6 +328,7 @@ struct Msc_Recognize_Data
     char sRecognize[BUFSIZE];
 };
 
+
 //配网进程往主控发送的wifi账号&wifi密码&UserID
 struct NetConfig_Info_Data
 {

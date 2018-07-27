@@ -49,4 +49,5 @@ int32 Aawant_Wakeup_Data_Flash_Done(DOWNLOAD_PARAM *dl_param, boolean *is_done);
 
 int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, boolean is_full_pkg);
 int32 Aawant_StartDownLoad2(DOWNLOAD_PARAM dl, char *g_url, char *save_path);
+
 #endif /* _UPG_TRIGGER_H_ */

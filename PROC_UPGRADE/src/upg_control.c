@@ -30,6 +30,7 @@ static uint8 _g_check_times = 0;
 #define UPG_END_TIME 6
 
 
+
 /**
  * 调用第三方app写入数据
  * @param imginfo

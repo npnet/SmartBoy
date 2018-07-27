@@ -11,6 +11,7 @@
 bool m_bDebug = false;
 
 
+
 static int OnDebug(CURL *, curl_infotype itype, char * pData, size_t size, void *)
 {
 	if(itype == CURLINFO_TEXT)

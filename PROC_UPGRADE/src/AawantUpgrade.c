@@ -94,6 +94,7 @@ void *Do_Download(void *dl) {
 }
 #endif
 
+
 void *Do_Download2(void *arg) {
     Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
     //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
