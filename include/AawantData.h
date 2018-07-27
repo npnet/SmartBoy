@@ -21,7 +21,7 @@
 #define IOT_PROCESS_IDENTITY 1     //	IOT进程
 #define ALARM_PROCESS_IDENTITY 2   //  闹钟进程
 #define IFLYTEK_PROCESS_IDENTITY 3 //  软核进程
-#define UPGRADE_PROCESS_IDENTITY 4  //升级进程
+#define UPGRAGE_PROCESS_IDENTITY 4  //升级进程
 #define PERIPHERAL_PROCESS_IDENTITY 5  //外围控制进程
 #define NETCONFIG_PROCESS_IDENTITY 6  //网络配置进程
 
@@ -45,7 +45,7 @@
 #define PKT_SYSTEM_SHUTDOWN 4 // 系统停止
 
 // 其他进程 <---> 主控进程
-#define PKT_SYSTEM_WAKEUP 5 //唤醒
+#define PKT_SYSTEM_WAKEUP 5 //唤醒&短按
 
 //主进程 --->外围进程
 #define PKT_BLNS_SYSTEM_STATUS 6 //系统状态灯光
@@ -55,13 +55,16 @@
 #define PKT_SYSTEM_READY_NETCONFIG 8 //长按信号&进入联网模式
 
 //配网进程--->主控进程
-#define PKT_SYSTEM_STATUS_NETCONFIG 9 //联网结果
+#define PKT_NETCONFIG_SUCCESS 9 //配网成功
 
 // 配网进程 ---> 主控进程 --->  IOT
 #define PKT_ROBOT_BIND_OK 10 // 音箱绑定失败
 
 // 主控进程---> 各子进程
 #define PKT_ROBOT_WIFI_DISCONNECT 11 //WIFI断开连接
+
+//配网进程--->主控进程
+#define PKT_NETCONFIG_FAILED 12 //配网失败
 
 // IOT --->  主控进程 ---> 相关子进程
 #define PKT_ROBOT_WIFI_CHANGE 101 // 更换WIFI
@@ -327,7 +330,6 @@ struct Msc_Recognize_Data
 {
     char sRecognize[BUFSIZE];
 };
-
 
 //配网进程往主控发送的wifi账号&wifi密码&UserID
 struct NetConfig_Info_Data
