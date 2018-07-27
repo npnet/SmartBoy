@@ -18,7 +18,7 @@
 #include <signal.h>
 #include <time.h>
 #include "AI_PKTHEAD.h"
-#include "AawantData.h"
+#include "AawantData.hbak"
 #include "AIcom_Tool.h"
 #include "AILogFile.h"
 #include "AIprofile.h"
@@ -137,10 +137,30 @@ int  main(int argc, char *argv[])
 
             };
 
+
+            PacketHead *pHead = (PacketHead *) lpInBuffer;
+            switch (pHead->iPacketID) {
+
+                case PKT_UPGRADE_CTRL: {
+
+
+                    break;
+                }
+                default:
+                    //WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");
+                    printf("upgraded Process : Receive unknown message from Master Process!\n");
+                    break;
+            };
+            free(lpInBuffer);
+
+        }
+
         }/* if( FD_ISSET(IOT_sock, &readmask) ) */
 
+
+
     };
-#endif
+
 #if 0
     while(1){
 
@@ -177,4 +197,4 @@ int  main(int argc, char *argv[])
         }
     }
 #endif
-}
+

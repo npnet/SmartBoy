@@ -29,3 +29,4 @@ INCLUDE_DIRECTORIES(../include)
 INCLUDE_DIRECTORIES(include)
 ADD_EXECUTABLE(voicon VoiceConnectIf.cpp VoiceConnectService.c)
 TARGET_LINK_LIBRARIES(voicon aawant voice)
+

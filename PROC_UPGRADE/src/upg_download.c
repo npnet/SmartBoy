@@ -12,7 +12,7 @@
 #include "upg_download.h"
 #include "curl/curl.h"
 #include "AIEUComm.h"
-#include "AawantData.h"
+#include "AawantData.hbak"
 
 #define BUF_SIZE_ENTRIE 256
 #define BUF_SIZE_HALF 128
@@ -895,7 +895,7 @@ int32 Aawant_Download_FullOtaPackage(DOWNLOAD_PARAM dl, char *url, char *save_pa
         goto out;
     }
 
-    /*
+    /**
      * 检查存储空间是否足够
      */
 
@@ -934,7 +934,7 @@ int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM dl) {
     AAWANTSendPacket(dl.dl_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData, sizeof(upgradeData));
 }
 
-
+#define ZIP_PATH  "/tmp/update.zip"
 /**********
  *
  * @param url
@@ -944,7 +944,7 @@ int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM dl) {
 int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, boolean is_full_pkg) {
     int ret;
 
-#define ZIP_PATH  "/tmp/update.zip"
+
     if (is_full_pkg) {
 
         if (0 == access(ZIP_PATH, F_OK)) {
@@ -981,3 +981,31 @@ int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, bool
     return ret;
 }
 
+/**********
+ *
+ * @param url
+ * @param save_path
+ * @return
+ */
+int32 Aawant_StartDownLoad2(DOWNLOAD_PARAM dl, char *g_url, char *save_path) {
+    int ret;
+
+    if (0 == access(ZIP_PATH, F_OK)) {
+        if (0 == remove(ZIP_PATH)) {
+            printf("remove existing %s \n", ZIP_PATH);
+        } else {
+            printf("remove existing %s failed\n", ZIP_PATH);
+            return -1;
+        }
+    }
+
+//    ret = Aawant_Download_FullOtaPackage(dl, g_url, UPGRADE_FULL_PKG_SAVE_PATH, 0);
+    ret = Aawant_Download_FullOtaPackage(dl, g_url, save_path, 0);
+    if (ret) {
+        printf("[%s]==>Download FullOtaPackage failed,%d\n", __FUNCTION__, ret);
+        return ret;
+    }
+
+
+    return ret;
+}

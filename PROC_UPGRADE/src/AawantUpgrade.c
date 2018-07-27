@@ -18,13 +18,50 @@
 #include "cJSON.h"
 #include <upg_control.h>
 #include "upg_download.h"
-
+#include "HttpClient.h"
 
 int server_sock;        // 服务器SOCKET
 DOWNLOAD_PARAM dl_param;
 int status;
+/*
+//空闲
+#define AAWANT_SYSTEM_IDLE_TASK 601
+
+//播放音乐
+#define AAWANT_SYSTEM_AUDIO_TASK 602
+
+//播放TTS
+#define AAWANT_SYSTEM_TTS_TASK 603
+
+//播放闹铃
+#define AAWANT_SYSTEM_ALARM_TASK 604
+
+//系统正在配置网络
+#define AAWANT_SYSTEM_NETCONFIG_TASK 605
+
+//系统正在拾音
+#define AAWANT_SYSTEM_MSC_RECOGNIZE 606
+
+//系统正在请求服务器
+#define AAWANT_SYSTEM_REQUEST_SERVLET 607
+
+//系统正在执行指令动作
+#define AAWANT_SYSTEM_COMMAND_CONTROL 608
+
+*/
+
+/*
+ * {
+        "nowVersion":1，
+        "toVersion":10,
+                "url":"http://www.aawant.com/ZFERq9ymV7SnMAUP/group1/M00/12/0D/
+        CgoKEVtYXVmAPAmmFetTC6kgkm0083.zip ",
+                                           "model":"mtk6735_release_L"
+    }
+ */
 
 
+#if 0
 void *Do_Download(void *dl) {
     // dl_param.dl_sock=server_sock;
     Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
@@ -55,6 +92,48 @@ void *Do_Download(void *dl) {
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
 
 }
+#endif
+
+void *Do_Download2(void *arg) {
+    Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
+    //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
+    int ret = Aawant_StartDownLoad2(dl_param, dl_param.url, dl_param.save_path);
+
+    if (ret == -1) {
+        printf("[%s]==>failed\n", __FUNCTION__);
+        Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_FAIL);
+
+    } else {
+        printf("[%s]==>sucess\n", __FUNCTION__);
+        Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_SUCESS);
+    }
+
+    printf("-----------------[%s][End]---------------\n", __FUNCTION__);
+}
+
+void parseJson(){
+
+}
+
+int check_CurrentVersion(){
+    return 0;
+}
+
+/**
+ * 检查升级结果
+ * @return
+ */
+int check_Upgrade_Result() {
+}
+
+
+/**
+ * 上报升级结果
+ */
+void report_UpgradeResult(){
+
+}
+
 
 /**
  *
@@ -67,7 +146,7 @@ int32 createDownloadPthread() {
 
    // mprintf("[%s]==>%d\n", __FUNCTION__, arg.dl_sock);
     // int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl);
-    int32 ret = pthread_create(&dl_ptd, NULL, Do_Download, NULL);
+    int32 ret = pthread_create(&dl_ptd, NULL, Do_Download2, NULL);
 
     if (ret != 0) {
         printf("[%s]==>create pthread fail\n", __FUNCTION__);
@@ -206,8 +285,6 @@ CURLE_SSL_PINNEDPUBKEYNOTMATCH, /* 90 - specified pinned public key did not
 CURLE_SSL_INVALIDCERTSTATUS,   /* 91 - invalid certificate status */
 CURL_LAST /* never use! */
 } CURLcode;
-
-#endif
 
 const char *curl_easy_strerror_cn(CURLcode code) {
     switch (code) {
@@ -417,6 +494,10 @@ const char *curl_easy_strerror_cn(CURLcode code) {
     }
 }
 
+#endif
+
+
+
 int main(int argc, char *argv[]) {
     char sService[30], sLog[300], sServerIP[30];
     int read_sock, numfds;
@@ -446,6 +527,9 @@ int main(int argc, char *argv[]) {
         return AI_NG;
     };
 
+    /**
+     * 初始化参数
+     */
     memset(&dl_param, 0, sizeof(dl_param));
     dl_param.dl_sock = server_sock;
     dl_param.is_full_pkg_update = False;
@@ -498,8 +582,9 @@ int main(int argc, char *argv[]) {
             PacketHead *pHead = (PacketHead *) lpInBuffer;
             switch (pHead->iPacketID) {
 
+            #if 0
                 case PKT_UPGRADE_CTRL: {
-                    /*
+
                     E_UPG_CONTROL_UPGRADE_STATUS status=Aawant_Get_Upgrade_Status();
                     if(status==E_UPG_CONTROL_UPGRADE_STATUS_UPGRADING)
                     {
@@ -507,7 +592,7 @@ int main(int argc, char *argv[]) {
                     } else{
                         Aawant_Set_Upgrade_Status(dl_param.status);
                     }
-                    */
+
                     AAWANT_UPG_CTL_STATUS status;
 
                     TO_UPGRADE_DATA *upData;
@@ -562,8 +647,7 @@ int main(int argc, char *argv[]) {
                             Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_UPGRADE_FAIL);
                             FROM_UPGRADE_DATA upgradeData;
                             upgradeData.status = UPGRADE_FAIL;
-                            upgradeData.code = 0;
-
+                            upgradeData.code = -1;
 
                             AAWANTSendPacket(server_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData,
                                              sizeof(upgradeData));
@@ -583,10 +667,32 @@ int main(int argc, char *argv[]) {
 
 
                     break;
+            #endif
+                case  PKT_GET_SYSTEMTASK_STATUS:
+                    break;
+
+
+                case  PKT_VERSION_UPDATE: {
+                    struct UpdateInfoMsg_Iot_Data *updateData;
+                    updateData = (struct UpdateInfoMsg_Iot_Data *) (lpInBuffer + sizeof(PacketHead));
+                    strcpy(dl_param.url,updateData->updateUrl);
+                    strcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
+                    createDownloadPthread();
+                    break;
                 }
+                case PKT_ROBOT_WIFI_CONNECT: {
+
+
+                    break;
+                }
+                case PKT_ROBOT_WIFI_DISCONNECT:{
+                    break;
+                }
+
                 default:
-                    //WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");
+                    WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");
                     printf("upgraded Process : Receive unknown message from Master Process!\n");
+
                     break;
             };
             free(lpInBuffer);

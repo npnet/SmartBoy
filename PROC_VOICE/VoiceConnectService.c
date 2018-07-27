@@ -21,7 +21,7 @@
 #include <signal.h>
 #include <time.h>
 #include "AI_PKTHEAD.h"
-#include "AawantData.h"
+#include "AawantData.hbak"
 #include "AIcom_Tool.h"
 #include "AILogFile.h"
 #include "AIprofile.h"

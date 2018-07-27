@@ -10,7 +10,7 @@
 #include <signal.h>
 #include <time.h>
 #include "AI_PKTHEAD.h"
-#include "AawantData.h"
+#include "AawantData.hbak"
 #include "AIcom_Tool.h"
 #include "AILogFile.h"
 #include "AIprofile.h"
@@ -79,15 +79,21 @@ void test_upgrade(){
 	upData.action=UPGRADE_START;
 	strcpy(upData.url,"http://192.168.1.118/update.bin");
 	AAWANTSendPacket(server_sock,PKT_UPGRADE_CTRL,(char *)&upData,sizeof(TO_UPGRADE_DATA));
-
 }
 
 void test_led(){
+	LED_CTL ledCtl;
+	ledCtl.mode=1;
+	ledCtl.value=0;
+	AAWANTSendPacket(server_sock,PKT_LED_CTRL,(char *)&ledCtl,sizeof(LED_CTL));
 
 }
 
 void test_key(){
-
+	KEY_EVENT keyEvent;
+	//keyEvent.type=0;
+	keyEvent.code=0x1;
+	AAWANTSendPacket(server_sock,PKT_LED_CTRL,(char *)&keyEvent,sizeof(KEY_EVENT));
 }
 
 void test_voice_connect(){

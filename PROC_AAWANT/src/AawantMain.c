@@ -12,7 +12,7 @@
 #include "AI_PKTHEAD.h"
 #include "AIUComm.h"
 #include "AIEUComm.h"
-#include "AawantData.h"
+#include "AawantData.hbak"
 
 #define  CLIENT_SOCKET_NUM  10
 

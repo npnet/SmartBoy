@@ -29,7 +29,8 @@ TARGET_LINK_LIBRARIES(upgraded aawant pthread curl)
 ADD_EXECUTABLE(upgrade_test test/update_test.cpp
         src/upg_control.c
         src/upg_download.c
-        src/upg_utility.c)
+        src/upg_utility.c
+        src/HttpClient.cpp)
 
 TARGET_LINK_LIBRARIES(upgrade_test aawant curl pthread)
 #endif()

@@ -192,6 +192,48 @@ extern DOWNLOAD_PARAM a_dl_param;
 extern E_UPG_CONTROL_UPGRADE_STATUS a_status;
 extern AAWANT_UPG_CTL_STATUS aa_status;
 
+typedef struct UPDATA_VERSION_T{
+    int nowVersion;
+    int toVersion;
+    char url[256];
+    char model[256];
+}UPDATA_VERSION;
+
+
+
+typedef enum {
+    DOWNLOAD_START=1,
+    DOWNLOAD_PAUSE,
+    DOWNLOAD_CONTINUE,
+    DOWNLOAD_CANCEL,
+    UPGRADE_START
+}UP_ACTION;
+
+//
+typedef struct TO_UPGRADE_DATA_T{
+    UP_ACTION action;     //1:下载  2:暂停   3：继续  4:取消  5：升级
+    char url[256];
+}TO_UPGRADE_DATA;
+
+
+typedef enum {
+    DOWNLOAD_SUCESS=0,
+    DOWNLOAD_INIT_FAIL,
+    DOWNLOAD_FAIL,
+    DOWNLOAD_FINISH_AND_REQUEST_UPGRADE,
+    REQUEST_UPGRADE,
+    REQUEST_FLASH,
+    REQUEST_REBOOT,
+    UPGRADE_FAIL,
+    UPGRADE_FINISH_AND_REQUEST_REBOOT
+}UPGRADE_STATUS;
+
+typedef struct FROM_UPGRADE_DATA_T{
+    UPGRADE_STATUS status;
+    int code;       //-1:下载失败,0:下载成功
+}FROM_UPGRADE_DATA;
+
+
 #define FunctionStart printf("----------------[%s][Start]----------------\n", __FUNCTION__);
 #define FunctionEnd   printf("-----------------[%s][End]-----------------\n", __FUNCTION__);
 #endif //SMARTBOY_AAWANT_H
