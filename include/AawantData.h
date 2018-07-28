@@ -58,7 +58,7 @@
 #define PKT_NETCONFIG_SUCCESS 9 //配网成功
 
 // 配网进程 ---> 主控进程 --->  IOT
-#define PKT_ROBOT_BIND_OK 10 // 音箱绑定失败
+#define PKT_ROBOT_BIND_FAILED 10 // 音箱绑定失败
 
 // 主控进程---> 各子进程
 #define PKT_ROBOT_WIFI_DISCONNECT 11 //WIFI断开连接
@@ -99,86 +99,101 @@
 //升级进程--->主控
 #define PKT_GET_SYSTEMTASK_STATUS 305 //获取当前系统任务状态
 
+//主控--->升级进程
+#define PKT_SYSTEMTASK_STATUS 306 //发送当前的系统状态
+
 /********灯状态控制*******/
-//错误状态
-#define BLNS_ERROR_STATUS 401
+typedef enum {
+    //错误状态
+    BLNS_ERROR_STATUS = 401,
 
-//声音控制状态
-#define BLNS_VOLUME_STATUS 402
+    //声音控制状态
+    BLNS_VOLUME_STATUS,
 
-//关闭状态
-#define BLNS_OFF_STATUS 403
+    //关闭状态
+    BLNS_OFF_STATUS,
 
-//开机状态
-#define BLNS_STARTUP_STATUS 404
+    //开机状态
+    BLNS_STARTUP_STATUS,
 
-//唤醒状态
-#define BLNS_WAKEUP_STATUS 405
+    //唤醒状态
+    BLNS_WAKEUP_STATUS,
 
-//从服务器获取信息状态
-#define BLNS_GET_SERVER_INFO_STATUS 406
+    //从服务器获取信息状态
+    BLNS_GET_SERVER_INFO_STATUS,
 
-//播报状态
-#define BLNS_BROADCAST_STATUS 407
+    //播报状态
+    BLNS_BROADCAST_STATUS,
 
-//播放状态
-#define BLNS_PLAY_STATUS 408
+    //播放状态
+    BLNS_PLAY_STATUS,
 
-//网络配置状态
-#define BLNS_NET_CONFIG_STATUS 409
+    //网络配置状态
+    BLNS_NET_CONFIG_STATUS,
 
-//OTA升级状态
-#define BLNS_UPDATE_STATUS 410
+    //OTA升级状态
+    BLNS_UPDATE_STATUS,
 
-//测试灯状态
-#define BLNS_TEST_STATUS 411
+    //测试灯状态
+    BLNS_TEST_STATUS,
 
-//其他状态转换成播放状态
-#define BLNS_SWITCH_PLAY_STATUS 412
+    //其他状态转换成播放状态
+    BLNS_SWITCH_PLAY_STATUS
+
+}System_Blns_Status;
+
 
 /********配网状态控制*******/
-//connect success
-#define NETWORK_CONNECT_SUCCESS 501
+typedef enum {
+    //connect success
+    NETWORK_CONNECT_SUCCESS = 501,
 
-//error passwd
-#define NETWORK_PASSWD_ERROR 502
+    //error passwd
+    NETWORK_PASSWD_ERROR,
 
-//ap is not exist
-#define NETWORK_AP_NOT_EXIST 503
+    //ap is not exist
+    NETWORK_AP_NOT_EXIST,
 
-//connect time out
-#define NETWORK_TIME_OUT 504
+    //connect time out
+    NETWORK_TIME_OUT,
 
-//fail to obtain ip
-#define NETWORK_OBTAIN_IP_FAILED 505
+    //fail to obtain ip
+    NETWORK_OBTAIN_IP_FAILED,
 
-//network unknow error
-#define NETWORK_ERROR_UNKNOW 506
+    //network unknow error
+    NETWORK_ERROR_UNKNOW
+
+}NetWork_Connect_Status;
+
+
 
 /********系统当前任务状态*******/
-//空闲
-#define AAWANT_SYSTEM_IDLE_TASK 601
+typedef enum {
+    //空闲
+    AAWANT_SYSTEM_IDLE_TASK = 601,
 
-//播放音乐
-#define AAWANT_SYSTEM_AUDIO_TASK 602
+    //播放音乐
+    AAWANT_SYSTEM_AUDIO_TASK,
 
-//播放TTS
-#define AAWANT_SYSTEM_TTS_TASK 603
+    //播放TTS
+    AAWANT_SYSTEM_TTS_TASK,
 
-//播放闹铃
-#define AAWANT_SYSTEM_ALARM_TASK 604
+    //播放闹铃
+    AAWANT_SYSTEM_ALARM_TASK,
 
-//系统正在配置网络
-#define AAWANT_SYSTEM_NETCONFIG_TASK 605
+    //系统正在配置网络
+    AAWANT_SYSTEM_NETCONFIG_TASK,
 
-//系统正在拾音
-#define AAWANT_SYSTEM_MSC_RECOGNIZE 606
+    //系统正在拾音
+    AAWANT_SYSTEM_MSC_RECOGNIZE,
 
-//系统正在请求服务器
-#define AAWANT_SYSTEM_REQUEST_SERVLET 607
+    //系统正在请求服务器
+    AAWANT_SYSTEM_REQUEST_SERVLET,
 
-//系统正在执行指令动作
-#define AAWANT_SYSTEM_COMMAND_CONTROL 608
+    //系统正在执行指令动作
+    AAWANT_SYSTEM_COMMAND_CONTROL
+} System_Task_Status;
+
 
 
 /*********************************************************************

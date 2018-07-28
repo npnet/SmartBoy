@@ -180,6 +180,12 @@ typedef struct AAWANT_DOWNLOAD_PARAM_T {
     pthread_mutex_t flash_mutex;
     pthread_mutex_t status_mutex;//升级状态锁
     pthread_cond_t status_cond;
+    pthread_mutex_t action_mutex;
+    pthread_cond_t  action_cond;
+
+    pthread_mutex_t intent_mutex;
+    pthread_cond_t  intent_cond;
+
     char img_num;
     char processing_img_idx;
     UPGRADE_IMAGE_INFO image[UPGRADE_IMG_NUM];
@@ -188,9 +194,7 @@ typedef struct AAWANT_DOWNLOAD_PARAM_T {
     //AAWANT_UPG_CTL_STATUS status;
 } DOWNLOAD_PARAM;
 
-extern DOWNLOAD_PARAM a_dl_param;
-extern E_UPG_CONTROL_UPGRADE_STATUS a_status;
-extern AAWANT_UPG_CTL_STATUS aa_status;
+
 
 typedef struct UPDATA_VERSION_T{
     int nowVersion;
@@ -202,16 +206,23 @@ typedef struct UPDATA_VERSION_T{
 
 
 typedef enum {
-    DOWNLOAD_START=1,
-    DOWNLOAD_PAUSE,
-    DOWNLOAD_CONTINUE,
-    DOWNLOAD_CANCEL,
-    UPGRADE_START
-}UP_ACTION;
+    UPG_START=1,
+    UPG_PAUSE,
+    UPG_CONTINUE,
+    UPG_CANCEL,
+
+}UPG_ACTION;
+
+typedef enum{
+   // INTENT_START=0,
+    INTENT_PAUSE=1,
+    INTENT_CONTINUE,
+    INTENT_CANCEL,
+}WantMeToDo;
 
 //
 typedef struct TO_UPGRADE_DATA_T{
-    UP_ACTION action;     //1:下载  2:暂停   3：继续  4:取消  5：升级
+    UPG_ACTION action;
     char url[256];
 }TO_UPGRADE_DATA;
 
@@ -232,6 +243,15 @@ typedef struct FROM_UPGRADE_DATA_T{
     UPGRADE_STATUS status;
     int code;       //-1:下载失败,0:下载成功
 }FROM_UPGRADE_DATA;
+
+
+extern DOWNLOAD_PARAM a_dl_param;
+extern E_UPG_CONTROL_UPGRADE_STATUS a_status;
+extern AAWANT_UPG_CTL_STATUS aa_status;
+extern UPG_ACTION up_action;
+extern WantMeToDo mpCmd;
+extern void SetMainProcessIntent(DOWNLOAD_PARAM *dl,WantMeToDo intent);
+extern WantMeToDo GetMainProcessIntent();
 
 
 #define FunctionStart printf("----------------[%s][Start]----------------\n", __FUNCTION__);

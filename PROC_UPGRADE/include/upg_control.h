@@ -7,7 +7,6 @@
 #include "common.h"
 #include "aawant.h"
 #include "upg_utility.h"
-//#include "upg_download.h"
 
 
 
@@ -78,17 +77,18 @@ void _upg_control_set_upgrade_status(E_UPG_CONTROL_UPGRADE_STATUS status);
 
 E_UPG_CONTROL_UPGRADE_STATUS _upg_control_get_upgrade_status(void);
 
-/*
- *
- */
-//void Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS status);
-//E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void);
+
 void Aawant_Set_Upgrade_Status(DOWNLOAD_PARAM *dl, AAWANT_UPG_CTL_STATUS status);
 
 AAWANT_UPG_CTL_STATUS Aawant_Get_Upgrade_Status(void);
 
 int32 AawantCmd_Flash_ImgData(DOWNLOAD_PARAM *dl_param);
+int32 FlashImgData(DOWNLOAD_PARAM *dl_param);
 
+void SetUpgradeAction(DOWNLOAD_PARAM *dl,UPG_ACTION action);
+UPG_ACTION GetUpgradeAction(DOWNLOAD_PARAM *dl);
 
+void SetMainProcessIntent(DOWNLOAD_PARAM *dl,WantMeToDo intent);
+WantMeToDo GetMainProcessIntent();
 //int32 createDownloadPthread(DOWNLOAD_PARAM dl);
 #endif /* _UPG_CONTROL_H_ */

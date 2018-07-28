@@ -19,73 +19,107 @@
 #include <upg_control.h>
 #include "upg_download.h"
 #include "HttpClient.h"
+#include "systool.h"
+
+typedef enum{
+    NOTHING=0,
+    DOWNLOADING,
+    UPGRADING,
+    FINISH
+}WHATDOING;
 
 int server_sock;        // 服务器SOCKET
 DOWNLOAD_PARAM dl_param;
 int status;
-int whatisUpgdoing;/
-int whatisMpdoing;
-/*
-//空闲
-#define AAWANT_SYSTEM_IDLE_TASK 601
+int whatisUpgdoing;
 
-//播放音乐
-#define AAWANT_SYSTEM_AUDIO_TASK 602
+int whatisMpdoing=NOTHING;
 
-//播放TTS
-#define AAWANT_SYSTEM_TTS_TASK 603
+//互斥锁
+pthread_mutex_t systasklock;
+//读写锁
+pthread_rwlock_t rwlock;
 
-//播放闹铃
-#define AAWANT_SYSTEM_ALARM_TASK 604
+int ChangeUpgradeFile(){
 
-//系统正在配置网络
-#define AAWANT_SYSTEM_NETCONFIG_TASK 605
-
-//系统正在拾音
-#define AAWANT_SYSTEM_MSC_RECOGNIZE 606
-
-//系统正在请求服务器
-#define AAWANT_SYSTEM_REQUEST_SERVLET 607
-
-//系统正在执行指令动作
-#define AAWANT_SYSTEM_COMMAND_CONTROL 608
-
-
-
-typedef enum{
-    AAWANT_SYSTEM_IDLE_TASK,
-    AAWANT_SYSTEM_AUDIO_TASK
-    AAWANT_SYSTEM_TTS_TASK
-    AAWANT_SYSTEM_ALARM_TASK
-    AAWANT_SYSTEM_NETCONFIG_TASK
-    AAWANT_SYSTEM_MSC_RECOGNIZE
-    AAWANT_SYSTEM_REQUEST_SERVLET
-    AAWANT_SYSTEM_COMMAND_CONTROL
-};
-*/
-
-void SetMainProcessStatus(int status)
-{
-    whatisMpdoing=status;
 }
 
-int GetMainProcessStatus(){
-    return whatisMpdoing;
+
+void parseJson(){
+
 }
 
-/*
- * {
-        "nowVersion":1，
-        "toVersion":10,
-                "url":"http://www.aawant.com/ZFERq9ymV7SnMAUP/group1/M00/12/0D/
-        CgoKEVtYXVmAPAmmFetTC6kgkm0083.zip ",
-                                           "model":"mtk6735_release_L"
-    }
+int check_CurrentVersion(){
+    return 0;
+}
+
+int GetCurrentTime(){
+    time_t ctime;
+}
+
+/**
+ * 检查上次运行是否有升级及升级结果
+ * @return 0:没有升级 1：有升级
  */
+int CheckUpgradeResult() {
+#define UPDATE_FILE
+
+    char *sMsg = AIcom_GetConfigString((char *) "Config", (char *) "Socket", (char *) CONFIG_FILE);
+    if (sMsg == NULL) {
+        printf("Fail to get Socket in %s!\n", CONFIG_FILE);
+        return (AI_NG);
+    };
+    //strcpy(sService, sMsg);
+
+}
 
 
-#if 0
+/**
+ * 上报下载结果
+ * int Get(const std::string &strUrl, std::string &strResponse);
+ */
+void ReportDownloadResult(){
+
+    char strUrl[256];
+    char strResponse[256];
+    //www.aawant.com/speaker/0.0.1/release/equipment/afterDownload
+    //Get(strUrl,strResponse);
+}
+
+
+
+
+
+/**
+ * 上报升级结果
+ * {"mac":"xxxx","time":1300000000000,"info":"","type":1,"toVersion":2,"nowVersion":1,
+ * "model":"mtk6735","updateUrl":"http://www.aawant.com/xxxx.zip","id":"xxxxxx","ids":1}
+ */
+void ReportUpgradeResult(char *mac,int time,int type,int toVersion,
+int nowVersion,char *model,char *updateUrl,char *id,int ids){
+
+    char json[4096];
+    cJSON *root=cJSON_CreateObject();
+
+    cJSON_AddItemToObject(root, "mac", cJSON_CreateString(mac));
+    cJSON_AddItemToObject(root,"time",cJSON_CreateNumber(time));
+    cJSON_AddItemToObject(root,"info",cJSON_CreateString(""));
+    cJSON_AddItemToObject(root,"type",cJSON_CreateNumber(type));
+    cJSON_AddItemToObject(root,"toVersion",cJSON_CreateNumber(toVersion));
+    cJSON_AddItemToObject(root,"nowVersion",cJSON_CreateNumber(nowVersion));
+    cJSON_AddItemToObject(root,"model",cJSON_CreateString(model));
+    cJSON_AddItemToObject(root,"updateUrl",cJSON_CreateString(updateUrl));
+    cJSON_AddItemToObject(root,"id",cJSON_CreateString(id));
+    cJSON_AddItemToObject(root,"ids",cJSON_CreateNumber(ids));
+
+    printf("%s\n", cJSON_Print(root));
+
+
+}
+
 void *Do_Download(void *dl) {
+#if 0
+
     // dl_param.dl_sock=server_sock;
     Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
     //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
@@ -113,50 +147,48 @@ void *Do_Download(void *dl) {
     }
 
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
-
-}
 #endif
+}
+
 
 
 void *Do_Download2(void *arg) {
     Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
-    //  int ret=Aawant_StartDownLoad(a_dl_param,"http://192.168.1.118/","/home/sine/download",True);
-    int ret = Aawant_StartDownLoad2(dl_param, dl_param.url, dl_param.save_path);
+
+    int ret = StartDownLoad2(dl_param, dl_param.url, dl_param.save_path);
 
     if (ret == -1) {
         printf("[%s]==>failed\n", __FUNCTION__);
         Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_FAIL);
+        //下载失败，把失败原因写进/data/aawant.conf
+        ChangeUpgradeFile();
 
     } else {
         printf("[%s]==>sucess\n", __FUNCTION__);
         Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_SUCESS);
+        printf("=======Upgrade:Get Upgrade Cmd========\n");
+
+        //Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
+        //上报下载结果
+        //    ReportDownloadResult();
+
+
+        memset(dl_param.save_path, 0, sizeof(dl_param.save_path));
+        stpcpy(dl_param.save_path, UPGRADE_FULL_PKG_SAVE_PATH);
+        strcat(dl_param.save_path, UPGRADE_FULL_PKG_NAME);
+
+        FlashImgData(&dl_param);
+        //下载失败，把失败原因写进/data/aawant.conf
+        ChangeUpgradeFile();
+        //system("reboot");
     }
+
+
 
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
 }
 
-void parseJson(){
 
-}
-
-int check_CurrentVersion(){
-    return 0;
-}
-
-/**
- * 检查升级结果
- * @return
- */
-int check_Upgrade_Result() {
-}
-
-
-/**
- * 上报升级结果
- */
-void report_UpgradeResult(){
-
-}
 
 
 /**
@@ -169,18 +201,58 @@ int32 createDownloadPthread() {
     // dl.dl_sock=arg.dl_sock;
 
    // mprintf("[%s]==>%d\n", __FUNCTION__, arg.dl_sock);
-    // int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,&dl);
-    int32 ret = pthread_create(&dl_ptd, NULL, Do_Download2, NULL);
+    int32 ret=pthread_create(&dl_ptd,NULL,Do_Download,NULL);
 
+    if (ret != 0) {
+        printf("[%s]==>create pthread fail\n", __FUNCTION__);
+    }
+
+    return ret;
+}
+
+
+int createDownloadThread2(){
+    pthread_t dl_ptd;
+
+    int32 ret = pthread_create(&dl_ptd, NULL, Do_Download2, NULL);
     if (ret != 0) {
         printf("[%s]==>create pthread fail\n", __FUNCTION__);
     }
 
 
     return ret;
+
 }
 
 
+void *TellMeWhatAreYouDoing(void *arg)
+{
+    int flags;
+
+    while (flags!=FINISH){
+        sleep(20);
+
+        if(dl_param.dl_sock>0)
+        {
+            AAWANTSendPacketHead(dl_param.dl_sock,PKT_GET_SYSTEMTASK_STATUS);
+        }
+    }
+}
+
+/**
+ * 询问主进程任务状态进程
+ * @return
+ */
+int CreateSystemTaskThread(){
+    pthread_t dl_ptd;
+    int32 ret = pthread_create(&dl_ptd, NULL, TellMeWhatAreYouDoing, NULL);
+    if (ret != 0) {
+        printf("[%s]==>create pthread fail\n", __FUNCTION__);
+    }
+
+    return ret;
+
+}
 #ifdef jiexi
 
 typedef enum {
@@ -528,7 +600,7 @@ int main(int argc, char *argv[]) {
     fd_set readmask;
     struct timeval timeout_select;
     int nError;
-
+    int rs;
 
     AIcom_ChangeToDaemon();
 
@@ -559,6 +631,9 @@ int main(int argc, char *argv[]) {
     dl_param.is_full_pkg_update = False;
     dl_param.status_cond = PTHREAD_COND_INITIALIZER;
     dl_param.status_mutex = PTHREAD_MUTEX_INITIALIZER;
+    dl_param.intent_cond=PTHREAD_COND_INITIALIZER;
+    dl_param.intent_mutex=PTHREAD_MUTEX_INITIALIZER;
+
 
     aa_status = AAW_CTL_DOWNLOAD_INIT;
 
@@ -572,10 +647,18 @@ int main(int argc, char *argv[]) {
     stHead.lPacketSize = sizeof(PacketHead);
     AAWANTSendPacket(server_sock, (char *) &stHead);
 
-    // 初始化本程序中重要的变量
-
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
+
+    //检查上次运行是否有升级及升级结果
+    rs=CheckUpgradeResult();
+    if(rs==0){
+
+        //上报升级结果
+     //   ReportUpgradeResult();
+    }
+
+
     for (;;) {
         FD_ZERO(&readmask);
         FD_SET(server_sock, &readmask);
@@ -692,26 +775,44 @@ int main(int argc, char *argv[]) {
 
                     break;
             #endif
-                case  PKT_GET_SYSTEMTASK_STATUS: {
-                    int sysStatus;
-                    sysStatus = (int *) (lpInBuffer + sizeof(PacketHead));
-                    if(sysStatus==)
-                    {}
+
+                /**
+                 * 获得主程序的工作状态
+                 */
+                case  PKT_SYSTEMTASK_STATUS: {
+                    System_Task_Status *sysStatus;
+                    sysStatus = (System_Task_Status *) (lpInBuffer + sizeof(PacketHead));
+                    //主控空闲时，设置升级
+                    if(*sysStatus==AAWANT_SYSTEM_IDLE_TASK)
+                    {
+                        //SetUpgradeAction(&dl_param,UPG_CONTINUE);
+                        SetMainProcessIntent(&dl_param,INTENT_CONTINUE);
+                        pthread_mutex_lock(&dl_param.intent_mutex);
+                        pthread_cond_signal(&dl_param.intent_cond);
+                        pthread_mutex_unlock(&dl_param.intent_mutex);
+                    }
+                    else{
+                       // SetUpgradeAction(&dl_param,UPG_PAUSE);
+                        SetMainProcessIntent(&dl_param,INTENT_PAUSE);
+                    }
+
                     break;
                 }
 
                 case  PKT_VERSION_UPDATE: {
                     struct UpdateInfoMsg_Iot_Data *updateData;
-                    int st;
+
                     updateData = (struct UpdateInfoMsg_Iot_Data *) (lpInBuffer + sizeof(PacketHead));
                     strcpy(dl_param.url,updateData->updateUrl);
                     strcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
-                    st=GetMainProcessStatus();
-                    Aawant_Get_Upgrade_Status();
+
+
+                    whatisUpgdoing= Aawant_Get_Upgrade_Status();
                     //检测当前状态，避免多次收到这个包，重复创建线程
-                    if()
+                    if(whatisUpgdoing==NOTHING)
                     {
-                        createDownloadPthread();
+                        createDownloadThread2();
+                        CreateSystemTaskThread();
                     }
                     break;
                 }
@@ -721,6 +822,12 @@ int main(int argc, char *argv[]) {
                     break;
                 }
                 case PKT_ROBOT_WIFI_DISCONNECT:{
+                    break;
+                }
+
+                case PKT_SYSTEM_WAKEUP:{
+
+
                     break;
                 }
 

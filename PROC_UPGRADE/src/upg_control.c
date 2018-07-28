@@ -235,9 +235,80 @@ void Aawant_Set_Upgrade_Status(DOWNLOAD_PARAM *dl, AAWANT_UPG_CTL_STATUS status)
 }
 
 
-//E_UPG_CONTROL_UPGRADE_STATUS Aawant_Get_Upgrade_Status(void){
+
 AAWANT_UPG_CTL_STATUS Aawant_Get_Upgrade_Status(void) {
     mprintf("[%s]==>current status:%d\n", __FUNCTION__, aa_status);
     return aa_status;
 }
 
+
+void SetUpgradeAction(DOWNLOAD_PARAM *dl,UPG_ACTION action){
+    pthread_mutex_lock(&dl->action_mutex);
+    up_action=action;
+    pthread_mutex_unlock(&dl->action_mutex);
+}
+
+UPG_ACTION GetUpgradeAction(DOWNLOAD_PARAM *dl){
+    return up_action;
+}
+
+WantMeToDo GetMainProcessIntent(){
+    return mpCmd;
+}
+
+void SetMainProcessIntent(DOWNLOAD_PARAM *dl,WantMeToDo intent){
+    pthread_mutex_lock(&dl->action_mutex);
+    mpCmd=intent;
+    pthread_mutex_unlock(&dl->action_mutex);
+}
+
+
+/**
+ *
+ * @param dl_param
+ * @return
+ */
+int32 FullyFlashImgData(DOWNLOAD_PARAM *dl_param) {
+    int32 ret = 0;
+    char upg_app_cmd[BUF_SIZE_HALF] = {0};
+#define PATH "/tmp/update"
+
+    snprintf(upg_app_cmd, sizeof(upg_app_cmd), "upgrade_app %s", dl_param->save_path);
+    printf("call upg app: %s\n", upg_app_cmd);
+
+    if (0 == access(PATH, F_OK)) {
+
+        if (0 == remove(PATH)) {
+            printf("remove existing %s \n", PATH);
+        } else {
+            printf("remove existing %s failed\n", PATH);
+            return -1;
+        }
+    }
+    ret = system(upg_app_cmd);
+    printf("[%s]==>upgrade_app return: %d\n", __FUNCTION__, ret);
+
+    return ret;
+}
+/**
+ * 把升级程序烧写到flash
+ * @param dl_param
+ * @return
+ */
+int32 FlashImgData(DOWNLOAD_PARAM *dl_param) {
+    int32 ret = 0;
+
+    Aawant_Set_Upgrade_Status(dl_param, AAW_CTL_UPGRADE_DOING);
+    //#define ZIP_PATH  "/tmp/update.zip"
+    mprintf("------------------[%s][Start]---------------------\n", __FUNCTION__);
+
+    ret = FullyFlashImgData(dl_param);
+    mprintf("------------------[%s][Finish]--------------------\n", __FUNCTION__);
+
+    if (ret == -1) {
+        Aawant_Set_Upgrade_Status(dl_param, AAW_CTL_UPGRADE_FAIL);
+    } else {
+        Aawant_Set_Upgrade_Status(dl_param, AAW_CTL_UPGRADE_SUCESS);
+    }
+    return ret;
+}

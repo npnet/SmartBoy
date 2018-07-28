@@ -23,9 +23,8 @@
 //char g_url[BUF_SIZE_ENTRIE] = {NETWORK_UPGRADE_BASE_URL};
 
 AAWANT_UPG_CTL_STATUS aa_status;
-
-
-
+UPG_ACTION up_action;
+WantMeToDo mpCmd;
 
 double Aawant_Get_Download_FileLenth(CURL *handle, const char *url) {
     double downloadFileLenth = 0.0;
@@ -93,6 +92,51 @@ int32 Aawant_DownLoad_init(DOWNLOAD_PARAM *dl_param,
         dl_param->upg_file_size = (int32) dl_lenth;
         printf("[%s]==>file size from id:%d, size not match, use server size:%d.\n", __FUNCTION__, file_size,
                dl_param->upg_file_size);
+    } else if (-1 == dl_lenth) {
+        return -1;
+    }
+
+    dl_param->fp = fopen(dl_param->save_path, "wb");
+    if (dl_param->fp == NULL) {
+        printf("[%s]==>fail to open save file:%s, reopen later\n", __FUNCTION__, dl_param->save_path);
+        return -1;
+    }
+
+    return i4_ret;
+}
+
+/**
+ * 主要初始化DOWNLOAD_PARAM几个参数，从文件服务器获得文件大小
+ * @param dl_param
+ * @param url
+ * @param save_path
+ * @return
+ */
+int32 DownLoadInit2(DOWNLOAD_PARAM *dl_param,char *url, char *save_path)
+{
+    int32 i4_ret = 0;
+    double dl_lenth = 0;
+    char *file_name = NULL;
+    mprintf("-------->%s:(^_^)<---------\n", __FUNCTION__);
+
+    file_name = UPGRADE_FULL_PKG_NAME;
+    pthread_mutex_init(&dl_param->flash_mutex, NULL);
+    pthread_cond_init(&dl_param->flash_cond, NULL);
+
+    memset(dl_param->save_path, 0, sizeof(dl_param->save_path));
+    strncpy(dl_param->url, url, strlen(url));
+    strncat(dl_param->url, file_name, strlen(file_name));
+
+    strncpy(dl_param->save_path, save_path, strlen(save_path));
+    strncat(dl_param->save_path, file_name, strlen(file_name));
+
+    /*
+     * 获得下载文件大小信息
+     */
+    dl_lenth = Aawant_Get_Download_FileLenth(NULL, dl_param->url);
+    if (dl_lenth > 0) {
+        dl_param->upg_file_size = (int32) dl_lenth;
+        printf("[%s]==>file size from server:%d.\n", __FUNCTION__, dl_param->upg_file_size);
     } else if (-1 == dl_lenth) {
         return -1;
     }
@@ -840,7 +884,7 @@ int32 Aawant_Download_OtaPackage(DOWNLOAD_PARAM dl, char *url, char *save_path, 
 }
 
 
-int32 Awant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl) {
+int32 Aawant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl) {
     int32 i4_ret = 0;
     CURL *curl = NULL;
 
@@ -873,6 +917,115 @@ int32 Awant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl) {
     printf("|<-------------%s:End-------------->|\n", __FUNCTION__);
     return i4_ret;
 }
+
+
+//
+
+size_t DownloadFullOtaPackage_CB2(void *ptr, size_t size, size_t nmemb, void *stream) {
+    int32 ret = 0;
+    DOWNLOAD_PARAM *dl_param = (DOWNLOAD_PARAM *) stream;
+    uchar *buffer = NULL;
+    double percent = 0.0;
+    int32 file_size = 0;
+
+    if (NULL == dl_param->fp) {
+        printf("[%s]==>please init download parameter first\n", __FUNCTION__);
+        return -1;
+    }
+
+    //
+    ret = GetMainProcessIntent();
+    if (ret==INTENT_CANCEL) {
+        printf("[%s]==>Get cancell cmd\n", __FUNCTION__);
+        return -1;
+    } else if(ret==INTENT_PAUSE){
+        printf("[%s]==>Get pause cmd\n", __FUNCTION__);
+        pthread_mutex_lock(&dl_param->intent_mutex);
+        pthread_cond_wait(&dl_param->intent_cond,&dl_param->intent_mutex);
+        pthread_mutex_unlock(&dl_param->intent_mutex);
+
+        //pthread_cond_wait()
+    } else if(ret==INTENT_CONTINUE){
+
+    }
+
+    buffer = (unsigned char *) malloc(size * nmemb);
+    if (NULL == buffer) {
+        printf("[%s]==>malloc buffer failed\n", __FUNCTION__);
+        return -1;
+    }
+
+    file_size = ftell(dl_param->fp);
+    printf("[%s]==>full cb: current dl size:%d, file size:%d\n", __FUNCTION__, dl_param->downloaded_size, file_size);
+
+    memcpy(buffer, ptr, size * nmemb);
+    ret = fwrite(buffer, 1, size * nmemb, dl_param->fp);
+    if (ret != (size * nmemb)) {
+        printf("[%s]==>ERROR: write size:%d, but return:%d, something may wrong\n", __FUNCTION__, size * nmemb, ret);
+        //    _upg_control_set_upgrade_status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
+        free(buffer);
+        return -1;
+    }
+
+    fflush(dl_param->fp);
+    fsync(fileno(dl_param->fp));
+    free(buffer);
+    dl_param->downloaded_size += (size * nmemb);
+
+    percent = (double) dl_param->downloaded_size / dl_param->requested_size * 100;
+    printf("[%s]==>full pkg download: download data/requested size: %d/%d --- %0.2f%%\n", __FUNCTION__,
+           dl_param->downloaded_size, dl_param->requested_size, percent);
+
+    if (dl_param->downloaded_size >= dl_param->requested_size) {
+        printf("[%s]==>full pkg download done,download_size/requested_size: %d/%d\n", __FUNCTION__,
+               dl_param->downloaded_size, dl_param->requested_size);
+        dl_param->is_request_done = False;
+        // i4_ret =Aawant_Request_To_Flash_Data(dl_param);
+
+        if (ret == -1)
+            printf("[%s]==>request_to_flash_data failed, ignore \n", __FUNCTION__);
+    }
+    return (size * nmemb);
+}
+
+
+
+int32 GetDownloadFullPkgData2(DOWNLOAD_PARAM *dl) {
+    int32 i4_ret = 0;
+    CURL *curl = NULL;
+
+
+    DOWNLOAD_PARAM *dl_param = dl;
+
+    mprintf("-------->%s:Start(^_^)<---------\n", __FUNCTION__);
+    //Curl参数设置
+    Aawant_Download_Curl_init(dl_param, curl, DownloadFullOtaPackage_CB2);
+
+    Aawant_Download_Param_Reset(dl_param);
+
+    while (dl_param->downloaded_size < dl_param->upg_file_size) {
+        //curl_easy_perform在这里
+        i4_ret = Aawant_Download_From_Offset(dl_param, dl_param->downloaded_size, dl_param->upg_file_size);
+        if (i4_ret) {
+            /* sometimes the connection will be closed by server, we will try to request data untill all data downloaded,
+                         but if resume download failed, we'll return failure. */
+            printf("%s==>Aawant_Download_From_Offset failed\n", __FUNCTION__);
+            goto out;
+        }
+    }
+    // Aawant_Wait_Data_Flash_Done(dl_param, &dl_param->is_request_done);
+
+    out:
+    if (dl_param->curl) {
+        curl_easy_cleanup(dl_param->curl);
+        curl_global_cleanup();
+        dl_param->curl = NULL;
+    }
+
+    printf("|<-------------%s:End-------------->|\n", __FUNCTION__);
+    return i4_ret;
+}
+
 
 
 /**
@@ -912,7 +1065,7 @@ int32 Aawant_Download_FullOtaPackage(DOWNLOAD_PARAM dl, char *url, char *save_pa
         goto out;
     }
 
-    i4_ret = Awant_Get_Download_FullPkgData(dl_param);
+    i4_ret = Aawant_Get_Download_FullPkgData(dl_param);
     if (i4_ret) {
         printf("[%s:%d]==>get FullPkgData failed\n", __FUNCTION__, __LINE__);
         goto out;
@@ -923,6 +1076,49 @@ int32 Aawant_Download_FullOtaPackage(DOWNLOAD_PARAM dl, char *url, char *save_pa
 
     return i4_ret;
 }
+
+
+int32 DownloadFullOtaPackage2(DOWNLOAD_PARAM dl, char *url, char *save_path) {
+    int32 i4_ret = 0;
+    CURL *curl = NULL;
+
+    DOWNLOAD_PARAM *dl_param = &dl;
+
+    mprintf("|<------------%s(+_+)----------->|\n", __FUNCTION__);
+    i4_ret = DownLoadInit2(dl_param, url, save_path);
+    if (i4_ret) {
+        printf("[%s:%d]==>download init failed\n", __FUNCTION__, __LINE__);
+        goto out;
+    }
+
+    /**
+     * 检查存储空间是否足够
+     */
+
+    i4_ret = Aawant_Check_Download_StorageSize(dl_param);
+    if (i4_ret) {
+        printf("[%s:%d]==>check storage size failed\n", __FUNCTION__, __LINE__);
+        goto out;
+    }
+
+    i4_ret = Aawant_Reopen_SaveFile(dl_param);
+    if (i4_ret) {
+        printf("[%s:%d]==>reopen_save_file failed\n", __FUNCTION__, __LINE__);
+        goto out;
+    }
+
+    i4_ret = GetDownloadFullPkgData2(dl_param);
+    if (i4_ret) {
+        printf("[%s:%d]==>get FullPkgData failed\n", __FUNCTION__, __LINE__);
+        goto out;
+    }
+
+    out:
+    Aawant_Clean_Download_BasicInfo(dl_param);
+
+    return i4_ret;
+}
+
 
 
 int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM dl) {
@@ -988,7 +1184,7 @@ int32 Aawant_StartDownLoad(DOWNLOAD_PARAM dl, char *g_url, char *save_path, bool
  * @param save_path
  * @return
  */
-int32 Aawant_StartDownLoad2(DOWNLOAD_PARAM dl, char *g_url, char *save_path) {
+int32 StartDownLoad2(DOWNLOAD_PARAM dl, char *g_url, char *save_path) {
     int ret;
 
     if (0 == access(ZIP_PATH, F_OK)) {
@@ -1000,13 +1196,11 @@ int32 Aawant_StartDownLoad2(DOWNLOAD_PARAM dl, char *g_url, char *save_path) {
         }
     }
 
-//    ret = Aawant_Download_FullOtaPackage(dl, g_url, UPGRADE_FULL_PKG_SAVE_PATH, 0);
-    ret = Aawant_Download_FullOtaPackage(dl, g_url, save_path, 0);
+    ret = DownloadFullOtaPackage2(dl, g_url, save_path);
     if (ret) {
         printf("[%s]==>Download FullOtaPackage failed,%d\n", __FUNCTION__, ret);
         return ret;
     }
-
 
     return ret;
 }
