@@ -45,9 +45,6 @@ int ChangeUpgradeFile(){
 }
 
 
-void parseJson(){
-
-}
 
 int check_CurrentVersion(){
     return 0;
@@ -183,13 +180,8 @@ void *Do_Download2(void *arg) {
         //system("reboot");
     }
 
-
-
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
 }
-
-
-
 
 /**
  *
@@ -219,9 +211,7 @@ int createDownloadThread2(){
         printf("[%s]==>create pthread fail\n", __FUNCTION__);
     }
 
-
     return ret;
-
 }
 
 
@@ -251,7 +241,6 @@ int CreateSystemTaskThread(){
     }
 
     return ret;
-
 }
 #ifdef jiexi
 
@@ -633,7 +622,6 @@ int main(int argc, char *argv[]) {
     dl_param.status_mutex = PTHREAD_MUTEX_INITIALIZER;
     dl_param.intent_cond=PTHREAD_COND_INITIALIZER;
     dl_param.intent_mutex=PTHREAD_MUTEX_INITIALIZER;
-
 
     aa_status = AAW_CTL_DOWNLOAD_INIT;
 
