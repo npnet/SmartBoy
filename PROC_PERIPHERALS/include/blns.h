@@ -10,7 +10,6 @@
 #ifndef CPLDLEDS_H
 #define CPLDLEDS_H
 
-#include <hardware/hardware.h>
 #include <linux/ioctl.h>
 
 #define      BLNS_HARDWARE_MODULE_ID      "blns"
@@ -32,8 +31,8 @@
 
 
 struct blns_device_t {
-    struct hw_device_t common;
-			
+
+    int fd;
     int (*set_bln_status)(struct blns_device_t* dev, int data);
 			
     int (*command_blns)(struct blns_device_t* dev, int data);
