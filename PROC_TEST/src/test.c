@@ -10,7 +10,7 @@
 #include <signal.h>
 #include <time.h>
 #include "AI_PKTHEAD.h"
-#include "AawantData.hbak"
+#include "AawantData.h"
 #include "AIcom_Tool.h"
 #include "AILogFile.h"
 #include "AIprofile.h"
@@ -55,6 +55,7 @@ void test_media_status()
 	
 }
 
+#if 0
 //下载
 void test_download(){
 	TO_UPGRADE_DATA upData;
@@ -81,6 +82,123 @@ void test_upgrade(){
 	AAWANTSendPacket(server_sock,PKT_UPGRADE_CTRL,(char *)&upData,sizeof(TO_UPGRADE_DATA));
 }
 
+#endif
+
+void test_update(){
+	struct UpdateInfoMsg_Iot_Data updata;
+
+	strcpy(updata.updateUrl,"http://192.168.1.118/update.zip");
+	strcpy(updata.id,"1");
+	strcpy(updata.model,"mt8516");
+	updata.nowVersion=2;
+	updata.toVersion=4;
+	AAWANTSendPacket(server_sock, PKT_VERSION_UPDATE, (char *) &updata,
+					 sizeof(struct UpdateInfoMsg_Iot_Data));
+
+}
+
+/*
+//空闲
+AAWANT_SYSTEM_IDLE_TASK = 601,
+
+//播放音乐
+        AAWANT_SYSTEM_AUDIO_TASK,
+
+//播放TTS
+        AAWANT_SYSTEM_TTS_TASK,
+
+//播放闹铃
+        AAWANT_SYSTEM_ALARM_TASK,
+
+//系统正在配置网络
+        AAWANT_SYSTEM_NETCONFIG_TASK,
+
+//系统正在拾音
+        AAWANT_SYSTEM_MSC_RECOGNIZE,
+
+//系统正在请求服务器
+        AAWANT_SYSTEM_REQUEST_SERVLET,
+
+//系统正在执行指令动作
+        AAWANT_SYSTEM_COMMAND_CONTROL
+        */
+void menu(){
+    printf("==========Cmd menu==========\n"
+           "1:AAWANT_SYSTEM_IDLE_TASK       601\n"
+           "2:AAWANT_SYSTEM_AUDIO_TASK      602\n"
+           "3:AAWANT_SYSTEM_ALARM_TASK      603\n"
+           "4:AAWANT_SYSTEM_NETCONFIG_TASK  604\n"
+           "5:AAWANT_SYSTEM_MSC_RECOGNIZE   605\n"
+           "6:AAWANT_SYSTEM_REQUEST_SERVLET 606\n"
+           "7:AAWANT_SYSTEM_COMMAND_CONTROL 607\n");
+}
+
+
+
+void test_systemtask(){
+	char buf[256];
+    char buf1[3][50];
+    char buf2[50];
+    char buf3[50];
+    int a;
+    int b;
+    int i;
+    int j;
+    char c;
+    char *word;
+    char *next;
+    char *left;
+
+    menu();
+
+   while (1){
+
+       //memset(buf1,0, sizeof(buf1));
+      // memset(buf1,0, sizeof(buf1));
+      // memset(buf1,0, sizeof(buf1));
+       printf("sine@:");
+
+       //scanf("%s%s%s",buf1,buf2,buf3);
+	   //b=scanf("%s",buf1);
+	   gets(buf);
+
+		word=strtok_r(buf," ",&left);
+		if(word!=NULL){
+			//printf("word=%s\n",word);
+			//printf("left=%s\n",left);
+
+			if(strcmp(word,"menu")==0){
+				menu();
+			} else if(strcmp(word,"task")==0){
+				//strcpy(next,left);
+				word=strtok_r(left," ",&next);
+				if(word!=NULL){
+					printf("word=%s\n",word);
+					System_Task_Status sysStatus;
+					if(strcmp(word,"601")==0){
+
+						sysStatus =AAWANT_SYSTEM_IDLE_TASK;
+					} else{
+						sysStatus =AAWANT_SYSTEM_AUDIO_TASK;
+					}
+					AAWANTSendPacket(server_sock, PKT_SYSTEMTASK_STATUS, (char *) &sysStatus,
+									 sizeof(System_Task_Status));
+
+				}
+			}
+		}
+
+
+
+
+	   fflush(stdin);
+       //printf("sine@:%s\n",buf1);
+   }
+
+}
+
+
+#if 0
 void test_led(){
 	LED_CTL ledCtl;
 	ledCtl.mode=1;
@@ -95,6 +213,7 @@ void test_key(){
 	keyEvent.code=0x1;
 	AAWANTSendPacket(server_sock,PKT_LED_CTRL,(char *)&keyEvent,sizeof(KEY_EVENT));
 }
+#endif
 
 void test_voice_connect(){
 
@@ -130,7 +249,7 @@ int  main(int argc, char *argv[])
 	int             nError;
 		
 	// 重定向输出
-	nError = SetTraceFile((char *)"TEST",(char *)CONFIG_FILE);
+	//nError = SetTraceFile((char *)"TEST",(char *)CONFIG_FILE);
 
 	/* 与主进程建立联接 */
 	sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Socket",(char *)CONFIG_FILE);
@@ -151,7 +270,7 @@ int  main(int argc, char *argv[])
 	PacketHead stHead;
 	memset((char *)&stHead,0,sizeof(PacketHead));
 	stHead.iPacketID = PKT_CLIENT_IDENTITY;
-	stHead.iRecordNum = PLAY_PROCESS_IDENTITY;
+	stHead.iRecordNum = TEST_PROCESS_IDENTITY;
 	stHead.lPacketSize = sizeof(PacketHead);
 	AAWANTSendPacket(server_sock, (char *)&stHead);
 
@@ -183,6 +302,17 @@ int  main(int argc, char *argv[])
 
 	//发送升级命令给主程序
 	if(argc>=2&& strcasecmp(argv[1],"upgrade")==0){
+		test_update();
+	}
+
+    //发送升级命令给主程序
+    if(argc>=2&& strcasecmp(argv[1],"cli")==0){
+        test_systemtask();
+    }
+
+#if 0
+	//发送升级命令给主程序
+	if(argc>=2&& strcasecmp(argv[1],"upgrade")==0){
 		test_upgrade();
 	}
 
@@ -196,7 +326,7 @@ int  main(int argc, char *argv[])
 	if(argc>=2&& strcasecmp(argv[1],"upcancel")==0){
 		test_download_cancel();
 	}
-
+#endif
 	// 终止系统
 	if(argc>=2 && strcasecmp(argv[1],"kill")==0) {
 		kill_master();

@@ -176,6 +176,7 @@ typedef struct AAWANT_DOWNLOAD_PARAM_T {
     int32 downloaded_size;
     char *conntent_buf;
     boolean is_request_done;
+    boolean is_continue;
     pthread_cond_t flash_cond;
     pthread_mutex_t flash_mutex;
     pthread_mutex_t status_mutex;//升级状态锁
@@ -243,6 +244,8 @@ typedef struct FROM_UPGRADE_DATA_T{
     UPGRADE_STATUS status;
     int code;       //-1:下载失败,0:下载成功
 }FROM_UPGRADE_DATA;
+
+
 
 
 extern DOWNLOAD_PARAM a_dl_param;

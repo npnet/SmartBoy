@@ -28,6 +28,18 @@ typedef enum{
     FINISH
 }WHATDOING;
 
+/**
+ * 情景：升级已经在进行中，但这时候再一次收到升级信息，这时候通过这变量来忽略
+ * 升级信号
+ */
+typedef enum UPG_STAGE_T{
+    UPG_STAGE_EARLY=0,
+    UPG_STAGE_ING,
+    UPG_STAGE_END
+}UPG_STAGE;
+
+UPG_STAGE upgStage;
+
 int server_sock;        // 服务器SOCKET
 DOWNLOAD_PARAM dl_param;
 int status;
@@ -40,6 +52,17 @@ pthread_mutex_t systasklock;
 //读写锁
 pthread_rwlock_t rwlock;
 
+void SetUpgStage(UPG_STAGE stage){
+    upgStage=stage;
+}
+
+UPG_STAGE GetUpgStage(){
+    return upgStage;
+}
+
+
+
+
 int ChangeUpgradeFile(){
 
 }
@@ -51,7 +74,11 @@ int check_CurrentVersion(){
 }
 
 int GetCurrentTime(){
-    time_t ctime;
+    struct timeval currentTime;
+    uint32 ms = 0;
+    gettimeofday(&currentTime, NULL);
+    ms = currentTime.tv_sec*1000000  + (currentTime.tv_usec );
+    return ms;
 }
 
 /**
@@ -59,14 +86,13 @@ int GetCurrentTime(){
  * @return 0:没有升级 1：有升级
  */
 int CheckUpgradeResult() {
-#define UPDATE_FILE
-
-    char *sMsg = AIcom_GetConfigString((char *) "Config", (char *) "Socket", (char *) CONFIG_FILE);
+    char *sMsg = AIcom_GetConfigString((char *) "Update", (char *) "LastVersion",(char *) UPGRADE_FILE);
     if (sMsg == NULL) {
-        printf("Fail to get Socket in %s!\n", CONFIG_FILE);
+        printf("Fail to get Update in %s!\n", UPGRADE_FILE);
         return (AI_NG);
     };
     //strcpy(sService, sMsg);
+    return 0;
 
 }
 
@@ -93,7 +119,7 @@ void ReportDownloadResult(){
  * "model":"mtk6735","updateUrl":"http://www.aawant.com/xxxx.zip","id":"xxxxxx","ids":1}
  */
 void ReportUpgradeResult(char *mac,int time,int type,int toVersion,
-int nowVersion,char *model,char *updateUrl,char *id,int ids){
+    int nowVersion,char *model,char *updateUrl,char *id,int ids){
 
     char json[4096];
     cJSON *root=cJSON_CreateObject();
@@ -160,24 +186,29 @@ void *Do_Download2(void *arg) {
         //下载失败，把失败原因写进/data/aawant.conf
         ChangeUpgradeFile();
 
+        SetUpgStage(UPG_STAGE_END);
+
     } else {
         printf("[%s]==>sucess\n", __FUNCTION__);
         Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_SUCESS);
-        printf("=======Upgrade:Get Upgrade Cmd========\n");
+        printf("=======Upgrade:Start flash and Upgrade========\n");
 
         //Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
         //上报下载结果
         //    ReportDownloadResult();
 
-
+#if 0
         memset(dl_param.save_path, 0, sizeof(dl_param.save_path));
         stpcpy(dl_param.save_path, UPGRADE_FULL_PKG_SAVE_PATH);
         strcat(dl_param.save_path, UPGRADE_FULL_PKG_NAME);
 
+
         FlashImgData(&dl_param);
         //下载失败，把失败原因写进/data/aawant.conf
         ChangeUpgradeFile();
+        SetUpgStage(UPG_STAGE_END);
         //system("reboot");
+#endif
     }
 
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
@@ -639,12 +670,17 @@ int main(int argc, char *argv[]) {
     timeout_select.tv_usec = 0;
 
     //检查上次运行是否有升级及升级结果
-    rs=CheckUpgradeResult();
+   // rs=CheckUpgradeResult();
+    /*
     if(rs==0){
 
         //上报升级结果
      //   ReportUpgradeResult();
     }
+     */
+
+    //设置升级的阶段
+    SetUpgStage(UPG_STAGE_EARLY);
 
 
     for (;;) {
@@ -768,40 +804,55 @@ int main(int argc, char *argv[]) {
                  * 获得主程序的工作状态
                  */
                 case  PKT_SYSTEMTASK_STATUS: {
+
+                #if 0
                     System_Task_Status *sysStatus;
                     sysStatus = (System_Task_Status *) (lpInBuffer + sizeof(PacketHead));
+                    mprintf("PKT_SYSTEMTASK_STATUS\n");
                     //主控空闲时，设置升级
                     if(*sysStatus==AAWANT_SYSTEM_IDLE_TASK)
                     {
                         //SetUpgradeAction(&dl_param,UPG_CONTINUE);
+                        mprintf("AAWANT_SYSTEM_IDLE_TASK\n");
                         SetMainProcessIntent(&dl_param,INTENT_CONTINUE);
                         pthread_mutex_lock(&dl_param.intent_mutex);
+                        dl_param.is_continue=True;
                         pthread_cond_signal(&dl_param.intent_cond);
+
                         pthread_mutex_unlock(&dl_param.intent_mutex);
                     }
                     else{
                        // SetUpgradeAction(&dl_param,UPG_PAUSE);
+                        mprintf("AAWANT_SYSTEM_x_TASK\n");
                         SetMainProcessIntent(&dl_param,INTENT_PAUSE);
                     }
-
+                #endif
                     break;
                 }
 
                 case  PKT_VERSION_UPDATE: {
                     struct UpdateInfoMsg_Iot_Data *updateData;
+                    printf("Get PKT_VERSION_UPDATE\n");
 
                     updateData = (struct UpdateInfoMsg_Iot_Data *) (lpInBuffer + sizeof(PacketHead));
+                    if(updateData!=NULL){
+                        printf("\n%s\n",updateData->updateUrl);
+                    }
+
                     strcpy(dl_param.url,updateData->updateUrl);
                     strcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
 
 
                     whatisUpgdoing= Aawant_Get_Upgrade_Status();
+
                     //检测当前状态，避免多次收到这个包，重复创建线程
-                    if(whatisUpgdoing==NOTHING)
+                    if(GetUpgStage()==UPG_STAGE_EARLY|GetUpgStage()==UPG_STAGE_END)
                     {
                         createDownloadThread2();
                         CreateSystemTaskThread();
+                        SetUpgStage(UPG_STAGE_ING);
                     }
+
                     break;
                 }
                 case PKT_ROBOT_WIFI_CONNECT: {

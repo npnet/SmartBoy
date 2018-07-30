@@ -12,7 +12,7 @@
 #include "AI_PKTHEAD.h"
 #include "AIUComm.h"
 #include "AIEUComm.h"
-#include "AawantData.hbak"
+#include "AawantData.h"
 
 #define  CLIENT_SOCKET_NUM  10
 
@@ -62,6 +62,7 @@ void StartAawantServer() {
     int iot_socket;
     int alarm_socket;
     int upgrade_socket;
+    int test_socket;
 
     char *sMsg = AIcom_GetConfigString((char *) "Config", (char *) "Socket", (char *) CONFIG_FILE);
     if (sMsg == NULL) {
@@ -162,8 +163,11 @@ void StartAawantServer() {
                         if (pHead->iRecordNum == ALARM_PROCESS_IDENTITY) {
                             alarm_socket = iClientSocketList[i];
                         };
-                        if(pHead->iRecordNum== UPGRADE_PROCESS_IDENTITY){
+                        if(pHead->iRecordNum== UPGRAGE_PROCESS_IDENTITY){
                             upgrade_socket =iClientSocketList[i];
+                        };
+                        if(pHead->iRecordNum== TEST_PROCESS_IDENTITY){
+                            test_socket =iClientSocketList[i];
                         }
 
                         break;
@@ -223,16 +227,18 @@ void StartAawantServer() {
                             AAWANTSendPacket(iot_socket, lpInBuffer);
                         };
                         break;
+                        /*
                     case PKT_VERSION_UPDATE:        // 收到版本更新包
                     {
                         struct UpdateInfoMsg_Iot_Data *pData;
-
+                        printf("MainProcess get version info\n");
                         pData = (struct UpdateInfoMsg_Iot_Data *) (lpInBuffer + sizeof(PacketHead));
                         sprintf(sLog, "Master Process : 当前版本[%d]升级版本[%d]机型[%s]URL[%s]", pData->nowVersion,
                                 pData->toVersion, pData->model, pData->updateUrl);
                         WriteLog((char *) RUN_TIME_LOG_FILE, sLog);
                     };
                         break;
+                         */
                     case PKT_ALARM_SETUP:            // 闹钟设置数据包
                         // 转发给闹钟进程
                         if (alarm_socket > 0) {
@@ -250,6 +256,9 @@ void StartAawantServer() {
                         WriteLog((char *) RUN_TIME_LOG_FILE, sLog);
                         break;
 
+
+
+#if 0
                     /*升级程序反馈回来的信息*/
                     case PKT_UPGRADE_FEEDBACK: {
                         printf("=============PKT_UPGRADE_FEEDBACK=============\n");
@@ -310,6 +319,37 @@ void StartAawantServer() {
                         break;
                     }
 
+#endif
+                    case PKT_VERSION_UPDATE:        // 收到版本更新包
+                    {
+                        struct UpdateInfoMsg_Iot_Data *pData;
+                        printf("MainProcess get version info\n");
+
+                        pData = (struct UpdateInfoMsg_Iot_Data *) (lpInBuffer + sizeof(PacketHead));
+                       // sprintf(sLog, "Master Process : 当前版本[%d]升级版本[%d]机型[%s]URL[%s]", pData->nowVersion,
+                       //         pData->toVersion, pData->model, pData->updateUrl);
+                       // WriteLog((char *) RUN_TIME_LOG_FILE, sLog);
+                        if(pData>0) {
+                            AAWANTSendPacket(upgrade_socket, lpInBuffer);
+                        }
+                    };
+                        break;
+
+                    case PKT_SYSTEMTASK_STATUS:
+                    {
+                        System_Task_Status *sysStatus;
+                        sysStatus = (System_Task_Status *) (lpInBuffer + sizeof(PacketHead));
+                        //主控空闲时，设置升级
+                        printf("PKT_SYSTEMTASK_STATUS\n");
+
+                        sysStatus = (System_Task_Status *) (lpInBuffer + sizeof(PacketHead));
+                        // sprintf(sLog, "Master Process : 当前版本[%d]升级版本[%d]机型[%s]URL[%s]", pData->nowVersion,
+                        //         pData->toVersion, pData->model, pData->updateUrl);
+                        // WriteLog((char *) RUN_TIME_LOG_FILE, sLog);
+                        if(sysStatus>0) {
+                            AAWANTSendPacket(upgrade_socket, lpInBuffer);
+                        }
+                    };
 
                 } /* switch */;
                 free(lpInBuffer);

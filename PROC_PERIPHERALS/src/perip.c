@@ -111,6 +111,8 @@ int  main(int argc, char *argv[])
 
 
 
+
+
     // 初始化本程序中重要的变量
 
     timeout_select.tv_sec = 10;
@@ -153,43 +155,42 @@ int  main(int argc, char *argv[])
                     //系统状态灯光
                 case PKT_BLNS_SYSTEM_STATUS:
                     //音量控制灯光
-                case PKT_BLNS_VALUE_STATUS:
+                case PKT_BLNS_VALUE_STATUS: {
                     System_Blns_Status *blns;
                     int cmd;
                     int sw = 0;
-                    blns=(System_Blns_Status *) (lpInBuffer + sizeof(PacketHead));
+                    blns = (System_Blns_Status *) (lpInBuffer + sizeof(PacketHead));
 
-                    if(*blns==BLNS_ERROR_STATUS) {
-                        cmd=AW9523B_IO_ERROR;
-                    } else if(*blns==BLNS_VOLUME_STATUS) {
+                    if (*blns == BLNS_ERROR_STATUS) {
+                        cmd = AW9523B_IO_ERROR;
+                    } else if (*blns == BLNS_VOLUME_STATUS) {
                         cmd = AW9523B_IO_VOLUME;
-                    } else if(*blns==BLNS_OFF_STATUS) {
+                    } else if (*blns == BLNS_OFF_STATUS) {
                         cmd = AW9523B_IO_OFF;
-                    } else if(*blns==BLNS_STARTUP_STATUS) {
+                    } else if (*blns == BLNS_STARTUP_STATUS) {
                         cmd = AW9523B_IO_START_UP;
-                    } else if(*blns==BLNS_WAKEUP_STATUS) {
+                    } else if (*blns == BLNS_WAKEUP_STATUS) {
                         cmd = AW9523B_IO_WAKEUP;
-                    } else if(*blns==BLNS_GET_SERVER_INFO_STATUS) {
+                    } else if (*blns == BLNS_GET_SERVER_INFO_STATUS) {
                         cmd = AW9523B_IO_GIFS;
-                    } else if(*blns==BLNS_BROADCAST_STATUS) {
+                    } else if (*blns == BLNS_BROADCAST_STATUS) {
                         cmd = AW9523B_IO_BROADCAST;
-                    } else if(*blns==BLNS_PLAY_STATUS) {
+                    } else if (*blns == BLNS_PLAY_STATUS) {
                         cmd = AW9523B_IO_PLAY;
-                    } else if(*blns==BLNS_NET_CONFIG_STATUS) {
+                    } else if (*blns == BLNS_NET_CONFIG_STATUS) {
                         cmd = AW9523B_IO_NETCONFIG;
-                    } else if(*blns==BLNS_UPDATE_STATUS) {
+                    } else if (*blns == BLNS_UPDATE_STATUS) {
                         cmd = AW9523B_IO_UPDATE;
-                    } else if(*blns==BLNS_TEST_STATUS) {
+                    } else if (*blns == BLNS_TEST_STATUS) {
                         cmd = AW9523B_IO_TEST;
-                    } else if(*blns==BLNS_SWITCH_PLAY_STATUS) {
+                    } else if (*blns == BLNS_SWITCH_PLAY_STATUS) {
                         cmd = AW9523B_IO_SWITCH_PLAY;
                     }
 
-                    if(ioctl(blns_fd, cmd, &sw) < 0)
-                    {
+                    if (ioctl(blns_fd, cmd, &sw) < 0) {
                         printf("IOCTL DATA FAIL...\n");
                     }
-
+                }
             case PKT_ROBOT_WIFI_CONNECT: {
 
                 break;

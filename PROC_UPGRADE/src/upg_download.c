@@ -125,7 +125,7 @@ int32 DownLoadInit2(DOWNLOAD_PARAM *dl_param,char *url, char *save_path)
 
     memset(dl_param->save_path, 0, sizeof(dl_param->save_path));
     strncpy(dl_param->url, url, strlen(url));
-    strncat(dl_param->url, file_name, strlen(file_name));
+   //strncat(dl_param->url, file_name, strlen(file_name));
 
     strncpy(dl_param->save_path, save_path, strlen(save_path));
     strncat(dl_param->save_path, file_name, strlen(file_name));
@@ -919,6 +919,19 @@ int32 Aawant_Get_Download_FullPkgData(DOWNLOAD_PARAM *dl) {
 }
 
 
+int32 DownLoadIsContinue(DOWNLOAD_PARAM *dl_param, boolean *is_done) {
+    int32 i4_ret = 0;
+
+    pthread_mutex_lock(&dl_param->intent_mutex);
+    while (!(*is_done)) {
+        printf("[%s]==>wait_data_flash_done\n", __FUNCTION__);
+        pthread_cond_wait(&dl_param->intent_cond, &dl_param->intent_mutex);
+    }
+    pthread_mutex_unlock(&dl_param->intent_mutex);
+
+    return i4_ret;
+}
+
 //
 
 size_t DownloadFullOtaPackage_CB2(void *ptr, size_t size, size_t nmemb, void *stream) {
@@ -934,20 +947,7 @@ size_t DownloadFullOtaPackage_CB2(void *ptr, size_t size, size_t nmemb, void *st
     }
 
     //
-    ret = GetMainProcessIntent();
-    if (ret==INTENT_CANCEL) {
-        printf("[%s]==>Get cancell cmd\n", __FUNCTION__);
-        return -1;
-    } else if(ret==INTENT_PAUSE){
-        printf("[%s]==>Get pause cmd\n", __FUNCTION__);
-        pthread_mutex_lock(&dl_param->intent_mutex);
-        pthread_cond_wait(&dl_param->intent_cond,&dl_param->intent_mutex);
-        pthread_mutex_unlock(&dl_param->intent_mutex);
 
-        //pthread_cond_wait()
-    } else if(ret==INTENT_CONTINUE){
-
-    }
 
     buffer = (unsigned char *) malloc(size * nmemb);
     if (NULL == buffer) {
@@ -984,6 +984,23 @@ size_t DownloadFullOtaPackage_CB2(void *ptr, size_t size, size_t nmemb, void *st
 
         if (ret == -1)
             printf("[%s]==>request_to_flash_data failed, ignore \n", __FUNCTION__);
+    }
+
+    ret = GetMainProcessIntent();
+    if (ret==INTENT_CANCEL) {
+        printf("[%s]==>Get cancell cmd\n", __FUNCTION__);
+        return -1;
+    } else if(ret==INTENT_PAUSE){
+        printf("[%s]==>Get pause cmd\n", __FUNCTION__);
+        /*
+        pthread_mutex_lock(&dl_param->intent_mutex);
+        pthread_cond_wait(&dl_param->intent_cond,&dl_param->intent_mutex);
+        pthread_mutex_unlock(&dl_param->intent_mutex);
+         */
+        DownLoadIsContinue(dl_param,&dl_param->is_continue);
+        //pthread_cond_wait()
+    } else if(ret==INTENT_CONTINUE){
+
     }
     return (size * nmemb);
 }
@@ -1085,6 +1102,8 @@ int32 DownloadFullOtaPackage2(DOWNLOAD_PARAM dl, char *url, char *save_path) {
     DOWNLOAD_PARAM *dl_param = &dl;
 
     mprintf("|<------------%s(+_+)----------->|\n", __FUNCTION__);
+    mprintf("Download From :%s\n",url);
+    mprintf("Save Path:%s\n",save_path);
     i4_ret = DownLoadInit2(dl_param, url, save_path);
     if (i4_ret) {
         printf("[%s:%d]==>download init failed\n", __FUNCTION__, __LINE__);
