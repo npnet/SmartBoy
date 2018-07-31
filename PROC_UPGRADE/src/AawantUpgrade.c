@@ -21,6 +21,7 @@
 #include "HttpClient.h"
 #include "systool.h"
 
+
 typedef enum{
     NOTHING=0,
     DOWNLOADING,
@@ -136,6 +137,7 @@ void ReportUpgradeResult(char *mac,int time,int type,int toVersion,
     cJSON_AddItemToObject(root,"ids",cJSON_CreateNumber(ids));
 
     printf("%s\n", cJSON_Print(root));
+   // Post(cJSON_Print(root));
 
 
 }

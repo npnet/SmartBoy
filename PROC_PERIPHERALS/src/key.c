@@ -1,7 +1,11 @@
-//#ifdef __cplusplus
+#ifdef __cplusplus
+#include <string>
+using  std::string;
+
+
 extern "C"
 {
-//#endif // __cplusplus
+#endif // __cplusplus
 
 #include <ctype.h>
 #include <sys/inotify.h>
@@ -23,6 +27,10 @@ extern "C"
 #include "sys/unistd.h"
 #include "malloc.h"
 #include "memory.h"
+#include "AIUComm.h"
+#include "AawantData.h"
+
+
 
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof ((a)[0]))
@@ -728,6 +736,9 @@ static inline const char* codename(unsigned int type, unsigned int code)
             kNames[type][code]) ? kNames[type][code] : "?";
 }
 #endif
+
+#define WAKEUP_CODE
+
 /**
  *
  * @param start
@@ -1237,10 +1248,63 @@ void *key_event_monitor_thread(void *arg)
 }
 
 
+
+
+
+/**
+ * 音量加减
+ * @return 2 加 1 减
+ */
+ int volumChange2(string str) {
+
+        int i = 0;
+        if (str.length() != 2) {
+            return 0;
+        }
+        int a = changeMap.get(str.substring(0, 1));
+        int b = changeMap.get(str.substring(1, 2));
+        // 音量减
+        if (a > b) {
+            if ((a - b) <= 4) {
+                return 1;
+            }
+        }
+        // 音量加
+        if (b > a) {
+            if ((b - a) <= 4) {
+                return 2;
+            }
+        }
+        return i;
+
+
+    return 0;
+}
+
+int volumChange(string str) {
+    int i = 0;
+
+        if (str.length() != 3) {
+            return 0;
+        }
+        int a = changeMap.get(str.substring(0, 1));
+        int b = changeMap.get(str.substring(1, 2));
+        int c = changeMap.get(str.substring(2, 3));
+        if (a > b && b > c) {
+            return 1;
+        }
+        if (a < b && b < c) {
+            return 2;
+        }
+
+    return i;
+}
+
+
 int create_KeyThread(){
     pthread_t keythread;
     FUNC_START
-    int ret=pthread_create(&keythread,NULL,key_event_monitor_thread,NULL);
+    int ret=pthread_create(&keythread,NULL,KeyEventMonitorThread2,NULL);
     if(ret){
         printf("creat key thread fail\n");
     }
@@ -1249,6 +1313,148 @@ int create_KeyThread(){
 
 }
 
-//#ifdef __cplusplus
+#ifdef __cplusplus
 } // extern "C"
-//#endif // __cplusplus
+#endif // __cplusplus
+
+void *KeyEventMonitorThread2(void *arg)
+{
+    FUNC_START
+    int res, i, j;
+    int pollres;
+    const char *device = NULL;
+    struct input_event event;
+    int32 irbtnMsg;
+    int server_sock;
+    std::string strbuf;
+
+    glongPressDuration = 500;
+    /**
+     * 开启长按键判断线程
+     */
+    Long_Press_Ctrl();
+
+    /**
+     * 手势判断
+     */
+    Gesture_Press_Ctrl();
+
+    gnfds = 1;
+    gufds = (struct pollfd *)calloc(1, sizeof(gufds[0]));
+    gufds[0].fd = inotify_init();
+    gufds[0].events = POLLIN;
+
+    /**
+     *使用inotify机制监控文件或目录
+     */
+    gwd = inotify_add_watch(gufds[0].fd, INPUT_DEVICE_PATH, IN_DELETE | IN_CREATE);
+    if (gwd < 0)
+    {
+        printf("could not add watch for %s, %s\n", INPUT_DEVICE_PATH, strerror(errno));
+    }
+    res = scan_dir(INPUT_DEVICE_PATH);
+    if (res < 0)
+    {
+        printf("scan dir failed for %s\n", INPUT_DEVICE_PATH);
+    }
+
+    /*
+     *
+     */
+    while (1)
+    {
+        //pollres > 0,gufds准备好好读、写或出错状态
+        pollres = poll(gufds, gnfds, -1);
+
+        //POLLIN:普通或优先级带数据可读
+        if (gufds[0].revents & POLLIN)
+        {
+            read_notify(INPUT_DEVICE_PATH, gufds[0].fd);
+        }
+
+        for (i = 1; i < gnfds; i++)
+        {
+            if (gufds[i].revents)
+            {
+                if (gufds[i].revents & POLLIN)
+                {
+                    res = read(gufds[i].fd, &event, sizeof(event));
+                    if (res < (int)sizeof(event))
+                    {
+                        printf("could not get event\n");
+                    }
+
+                    /**
+                     * 按键处理
+                     */
+                    if (KEYPAD_DEVICE_TYPE == device_type_nfds[i] && EV_KEY == event.type)
+                    {
+                        /**
+                         * 按键按下处理
+                         */
+                        if (1 == event.value)   /* key press process */
+                        {
+                            if ((KEY_WAKEUP == event.code || KEY_VOLUMEUP == event.code ||
+                                 KEY_POWER == event.code) && KEY_RECORD_MASK == gKeyValueRecord)
+                            {
+                                mprintf("[%s]==>key code=%d,value%d\n",__FUNCTION__,event.code,event.value);
+
+                                gKeyPressed = True;
+                                gKeyLongPressed = False;  /* long press flag, handle in the function key_long_press_thread_routine */
+                                gKeyValueRecord = event.code;
+                                pthread_cond_signal(&gkeycond);/*trigger long key thread to start time record*/
+                            } else if(KEY_A==event.code||KEY_B==event.code||
+                                      KEY_C==event.code||KEY_D==event.code||
+                                      KEY_E==event.code||KEY_F==event.code||
+                                      KEY_G==event.code||KEY_H==event.code||
+                                      KEY_I==event.code||KEY_J==event.code||
+                                      KEY_J==event.code||KEY_K==event.code||
+                                      KEY_L==event.code)
+                            {
+                                gKeyPressed = True;
+                                gKeyValueRecord = event.code;
+                            }
+
+                        }
+                        else    /* event.value=0,按键释放处理 */
+                        {
+                            /*so far, only handle the case of one key press, if other key release, don't care it*/
+                            if (KEY_WAKEUP == event.code)
+                            {
+                                printf(" KEY released \n");
+                                gKeyPressed = False;    /* long press flag clear */
+                                gKeyValueRecord = KEY_RECORD_MASK;
+                                /**
+                                 * 长按线程只是改变gKeyPressed，gKeyLongPressed的值
+                                 * 事件的处理在按键释放的时候触发，在触发的时候，时间达到了
+                                 * 长按的设定则判断为长按，否则判断为短按
+                                 */
+                                if (gKeyLongPressed)
+                                {
+                                    //长按联网配置
+                                    AAWANTSendPacketHead(server_sock, PKT_SYSTEM_READY_NETCONFIG);
+                                } else{
+                                    //短按唤醒
+                                    AAWANTSendPacketHead(server_sock, PKT_SYSTEM_WAKEUP);
+                                }
+                                //触控暂时按发键值来处理，后续不排除按键趋势算法这边做
+                            }else if(KEY_A==event.code||KEY_B==event.code||
+                                     KEY_C==event.code||KEY_D==event.code||
+                                     KEY_E==event.code||KEY_F==event.code||
+                                     KEY_G==event.code||KEY_H==event.code||
+                                     KEY_I==event.code||KEY_J==event.code||
+                                     KEY_J==event.code||KEY_K==event.code||
+                                     KEY_L==event.code){
+
+                            }
+                        }
+                    }
+
+
+                }
+            }
+        }
+    }
+    FUNC_END
+}
+

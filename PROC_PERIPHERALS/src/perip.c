@@ -55,6 +55,7 @@ void *keyThread(void *arg){
 
 }
 
+
 int CreateKeyThread(){
     pthread_t keyId;
     int ret=pthread_create(&keyId,NULL,&keyThread,NULL);
@@ -63,6 +64,8 @@ int CreateKeyThread(){
     }
 
 }
+
+
 
 
 int  main(int argc, char *argv[])
@@ -95,7 +98,6 @@ int  main(int argc, char *argv[])
         return AI_NG;
     };
 
-
     // 把本进程的标识送给主进程
     PacketHead stHead;
     memset((char *)&stHead,0,sizeof(PacketHead));
@@ -109,16 +111,9 @@ int  main(int argc, char *argv[])
         printf("open blns failed\n");
     }
 
-
-
-
-
     // 初始化本程序中重要的变量
-
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
-
-
 
     CreateKeyThread();
 
