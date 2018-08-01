@@ -21,11 +21,11 @@
 #include <signal.h>
 #include <time.h>
 #include "AI_PKTHEAD.h"
-#include "AawantData.hbak"
-#include "AIcom_Tool.h"
-#include "AILogFile.h"
-#include "AIprofile.h"
-#include "AIUComm.h"
+#include "AawantData.h"
+//#include "AIcom_Tool.h"
+//#include "AILogFile.h"
+//#include "AIprofile.h"
+//#include "AIUComm.h"
 #include "cJSON.h"
 #include "pthread.h"
 
@@ -48,6 +48,7 @@ int CreateVCThread(){
 
 int  main(int argc, char *argv[])
 {
+#if 0
     char			sService[30],sLog[300],sServerIP[30];
     int				read_sock, numfds;
     fd_set			readmask;
@@ -139,5 +140,27 @@ int  main(int argc, char *argv[])
         voice_decoder_VoiceRecognizer_writeBuf();
 #endif
     };
+#endif
+    int sampleRate;
+    int freqs[19];
+    int length=sizeof(freqs);
+    int baseFreq = 16000;
+    sampleRate=44100;
+    int channelConfig;
+    int audioFormat;
+    int bufferSizeInBytes;
 
+    //int channelConfig = AudioFormat.CHANNEL_IN_MONO;
+    //int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
+    //int bufferSizeInBytes = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+
+
+    for(int i = 0; i < length; i ++)
+    {
+        freqs[i] = baseFreq + i * 150;
+    }
+    //
+    voice_decoder_VoiceRecognizer_init(sampleRate);
+    voice_decoder_VoiceRecognizer_setFreqs(freqs,length);
+    voice_decoder_VoiceRecognizer_start(bufferSizeInBytes);
 }

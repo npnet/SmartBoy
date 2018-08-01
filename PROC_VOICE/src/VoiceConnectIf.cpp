@@ -12,19 +12,18 @@
 //#include "jni/voice_encoder_VoicePlayer.h"
 
 
-#include "../include/voicePlay.h"
-#include "../include/voiceRecog.h"
-#include "../include/audioRecorder.h"
-#include "../include/util.h"
-#include "../include/memory.h"
-#include "../include/common.h"
+#include "voicePlay.h"
+#include "voiceRecog.h"
+#include "audioRecorder.h"
+#include "util.h"
+#include "memory.h"
+#include "common.h"
+#include "VoiceConnectIf.h"
 
+typedef struct Object{}jobject;
+static jobject *jrecognizer = NULL;
 static void *player = NULL;
-
-
 static void *recognizer = NULL;
-
-
 static pthread_t recogTid = NULL;
 static void *recorder = NULL;
 static int playerFreqs[19];
@@ -269,8 +268,163 @@ void voice_decoder_VoiceRecognizer_setFreqs(int _freqs[]) {
 #endif
 
 
+
+
+//识别开始判断
+void recognizerStart(void *_listener, float _soundTime)
+{
+    assert(jrecognizer != NULL);
+
+}
+
+//识别结束判断
+void recognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_data, int _dataLen)
+{
+    assert(jrecognizer != NULL);
+
+#if 0
+    String data = "";
+
+    if(_result == 0)
+    {
+        byte[] hexData = _hexData.getBytes();
+        int infoType = DataDecoder.decodeInfoType(hexData);
+        if(infoType == DataDecoder.IT_STRING)
+        {
+            data = DataDecoder.decodeString(_result, hexData);
+        }
+        else if(infoType == DataDecoder.IT_SSID_WIFI)
+        {
+            SSIDWiFiInfo wifi = DataDecoder.decodeSSIDWiFi(_result,  hexData);
+            data = "ssid:" + wifi.ssid + ",pwd:" + wifi.pwd;
+        }
+        else
+        {
+            data = "未知数据";
+        }
+    }
+    handler.sendMessage(handler.obtainMessage(MSG_RECG_TEXT, data));
+#endif
+    char *data;
+    WiFiInfo wifiInfo;
+    int result=0;
+    char resData[4096];
+    InfoType infoType=vr_decodeInfoType(_data,_dataLen);
+    if(infoType==IT_WIFI) {
+        vr_decodeWiFi(result,_data,_dataLen,&wifiInfo);
+    } else if(infoType==IT_SSID_WIFI){
+
+
+    } else if(infoType==IT_PHONE){
+
+    } else if(infoType==IT_STRING){
+        vr_decodeString(result,_data,_dataLen,resData,4096);
+
+
+#if 0
+        // 收到任意网
+        intervalTime = SpeakProperties.RecVoiceTimeDelay;
+        data = DataDecoder.decodeString(_result, hexData);
+        LogUtil.d(TAG, data);
+        if (data.startsWith("1")) {
+            wifiName = data.substring(1, data.length());
+            LogUtil.d(TAG, "wifiName=" + wifiName);
+        }
+        if (data.startsWith("2")) {
+            passWord = data.substring(1, data.length());
+            LogUtil.d(TAG, "passWord=" + passWord);
+        }
+        if (data.startsWith("3")) {
+            userId = data.substring(1, data.length());
+            LogUtil.d(TAG, "userId=" + userId);
+        }
+        if (data.startsWith("4")) {
+            configureType = 2;
+            userId = data.substring(1, data.length());
+            LogUtil.d(TAG, "userId=" + userId);
+        }
+        // 声波数据分三次获得、wifi账号、密码、userid
+        if (null != wifiName && null != passWord && null != userId && !falg) {
+
+        } else if(infoType==IT_BLOCKS){
+
+        }
+#endif
+
+    }
+
+}
+
+#define MAX_MATCH_FREQ_COUNT 8
+void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches, int _matchesLen)
+{
+    assert(jrecognizer != NULL);
+
+    int i;
+    short freqs[MAX_MATCH_FREQ_COUNT];
+    short lens[MAX_MATCH_FREQ_COUNT];
+    float strengths[MAX_MATCH_FREQ_COUNT];
+
+    for(i = 0; i < _matchesLen; i ++)
+    {
+        freqs[i] = _matches[i].frequency;
+        lens[i] = _matches[i].length;
+        strengths[i] = _matches[i].strength;
+        printf("match frequency %d length:%d, strength:%.2f from %d to %d\n", _matches[i].frequency, _matches[i].length, _matches[i].strength, _timeIdx-_matches[i].length, _timeIdx);
+    }
+
+}
+
+ void voice_decoder_VoiceRecognizer_init( int _sampleRate)
+{
+    if(jrecognizer != NULL)
+    {
+
+        jrecognizer = NULL;
+    }
+    recognizerFreqsChanged = false;
+
+    recognizerSampleRate = _sampleRate;
+    assert(jrecognizer != NULL);
+
+}
+
+
+/**
+ * 把个频率设置到这个数组recognizerFreqs
+ * @param _freqs
+ * @param n
+ */
+ void  voice_decoder_VoiceRecognizer_setFreqs( int _freqs[],int n)
+{
+    int *freqs ;
+    int len ;
+    freqs=_freqs;
+    len=n;
+    //可识别的频率有19个？
+    //断言，为真则什么也不做，为假会显示发生错误的表达式，源码文件名以及发生错误的程序代码行数
+    //并调用abort函数，结束程序执行
+    assert(len == sizeof(recognizerFreqs)/sizeof(int));
+    memcpy(recognizerFreqs, freqs, sizeof(recognizerFreqs));
+
+    recognizerFreqsChanged = true;
+
+    /**
+     * 下面这部分貌似没什么卵用，可能用来验证上面recognizerFreqs数组赋值正确否
+     */
+    char buffer[256];
+    int i, ic = len;
+    buffer[0] = 0;
+    for(i = 0; i < ic; i ++)
+    {
+        sprintf(buffer+strlen(buffer),"%d,",recognizerFreqs[i]);
+    }
+}
+
 //===========
-int recorderShortWrite(void *recognizer, const char *data, unsigned long _sampleCout) {
+int recorderShortWrite(void *_writer,char *_data, unsigned long _sampleCout) {
+    char *data = (char *)_data;
+    void *recognizer = _writer;
     const int bytePerFrame = 2;
     return vr_writeData(recognizer, data, ((int) _sampleCout) * bytePerFrame);
 }
@@ -279,6 +433,10 @@ void *runRecorderVoiceRecognize(void *_recognizer) {
     vr_runRecognizer(_recognizer);
 }
 
+/**
+ *
+ * @param _minBufferSize
+ */
 void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
     printf("voice_decoder_VoiceRecognizer_start(%d)", _minBufferSize);
     if (recognizer != NULL && !vr_isRecognizerStopped(recognizer))
@@ -289,54 +447,57 @@ void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
 #if ((defined(FREQ_ANALYSE_TIME_MATCH2) && defined(TV_LIB)) || defined(TEST_MATCH_FREQ))
         recognizer = vr_createVoiceRecognizer2(CPUUsePriority, recognizerSampleRate);
 #else
+        //创建声音设别器
         recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, recognizerSampleRate);
 #endif
-
 
 #ifdef CALLBACK_MATCH_EVENT
         vr_setRecognizerListener2(recognizer, NULL, recognizerStart, recognizerEnd, recognizerMatch);
 #else
-        vr_setRecognizerListener(recognizer, NULL, recognizerStart, recognizerEnd
-        );
+        //
+        vr_setRecognizerListener(recognizer, NULL, recognizerStart, recognizerEnd);
 #endif
         if (recognizerFreqsChanged)
-            vr_setRecognizeFreqs(recognizer, recognizerFreqs,
-                                 sizeof(recognizerFreqs) / sizeof(int));
+            vr_setRecognizeFreqs(recognizer, recognizerFreqs, sizeof(recognizerFreqs) / sizeof(int));
 
-        assert(recorder
-               == NULL);
+        assert(recorder == NULL);
 
+        //初始化录音机
         int r = initRecorder(recognizerSampleRate, 1, 16, _minBufferSize, &recorder);
         if (r != 0) {
             printf("recorder init error:%d", r);
             return;
         }
 
-        r = startRecord(recorder, recognizer, recorderShortWrite);
+        r = startRecord(recorder, recognizer, (r_pwrite )recorderShortWrite);
         if (r != 0) {
             printf("recorder record error:%d", r);
             return;
         }
 
-        assert(recogTid
-               == NULL);
-        pthread_create(&recogTid, NULL, runRecorderVoiceRecognize, recognizer
-        );
+        assert(recogTid == NULL);
+        //开启录音识别线程
+        pthread_create(&recogTid, NULL, runRecorderVoiceRecognize, recognizer);
     }
 }
 
+/**
+ * 暂停识别
+ * @param _microSeconds
+ */
 void voice_decoder_VoiceRecognizer_pause(int _microSeconds) {
     printf("voice_decoder_VoiceRecognizer_pause(%d)", _microSeconds);
     if (recognizer == NULL || vr_isRecognizerStopped(recognizer))
         return;
-    vr_pauseRecognize(recognizer, _microSeconds
-    );
+    vr_pauseRecognize(recognizer, _microSeconds);
 }
 
+/**
+ * 停止录音识别
+ */
 void voice_decoder_VoiceRecognizer_stop() {
     printf("voice_decoder_VoiceRecognizer_stop, recorder:%p, recognizer:%p", recorder, recognizer);
     if (recorder != NULL) {
-
         int r = stopRecord(recorder);
         printf("recorder stop result:%d", r);
         r = releaseRecorder(recorder);
@@ -363,7 +524,11 @@ void voice_decoder_VoiceRecognizer_stop() {
     }
 }
 
-bool voice_decoder_VoiceRecognizer_isStopped() {
+/**
+ * 判断录音设别是否停止
+ * @return
+ */
+boolean voice_decoder_VoiceRecognizer_isStopped() {
     return (recognizer == NULL || vr_isRecognizerStopped(recognizer)) ? true : false;
 }
 

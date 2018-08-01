@@ -13,27 +13,21 @@
 #define _AAWANTDATA_H
 
 //#define  CONFIG_FILE  (char *)"/data/etc/aawant.conf"
-#if 0
-#define CONFIG_FILE (char *)"/home/sine/test/config/aawant.conf"
-#define UPGRADE_FILE (char *)"/home/sine/test/update/update.conf"
-#else
-#define CONFIG_FILE (char *)"/data/config/aawant.conf"
-#define UPGRADE_FILE (char *)"/data/update/update.conf"
-#endif
+
+#define CONFIG_FILE (char *)"/data/etc/aawant.conf"
+#define UPDATE_FILE (char *)"/data/etc/update.conf"
 
 
 #define BUFSIZE 512
 #define ALARM_FIELD_SIZE 80 // 闹钟ID最大长度
 
 // 各进程身份标识
-#define TEST_PROCESS_IDENTITY   7
 #define IOT_PROCESS_IDENTITY 1     //	IOT进程
 #define ALARM_PROCESS_IDENTITY 2   //  闹钟进程
 #define IFLYTEK_PROCESS_IDENTITY 3 //  软核进程
 #define UPGRAGE_PROCESS_IDENTITY 4  //升级进程
 #define PERIPHERAL_PROCESS_IDENTITY 5  //外围控制进程
 #define NETCONFIG_PROCESS_IDENTITY 6  //网络配置进程
-
 
 // 各进程用的信号灯键值（要保证各进程用的不同且不与系统中其他进程使用的冲突）
 #define ALARM_SEM_KEY 100 // 闹钟管理的信号灯键值
@@ -51,7 +45,7 @@
 // 音箱绑定进程 ---> 主控进程  ---> IOT
 #define PKT_ROBOT_WIFI_CONNECT 3 // WIFI联网成功
 
-// 音箱绑定进程 ---> 主控进程
+// 音箱绑定进程/音响升级进程 ---> 主控进程
 #define PKT_SYSTEM_SHUTDOWN 4 // 系统停止
 
 // 其他进程 <---> 主控进程
@@ -75,6 +69,12 @@
 
 //配网进程--->主控进程
 #define PKT_NETCONFIG_FAILED 12 //配网失败
+
+//配网进程--->主控进程
+#define PKT_SYSTEM_RECEIVE_WIFI_INFO 13  //获取到wifi账号&密码&UserID
+
+//配网进程--->主控进程--->IOT
+#define PKT_SYSTEM_UPGRADE_FAIL      14  //升级失败
 
 // IOT --->  主控进程 ---> 相关子进程
 #define PKT_ROBOT_WIFI_CHANGE 101 // 更换WIFI

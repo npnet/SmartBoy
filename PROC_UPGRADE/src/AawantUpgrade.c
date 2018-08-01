@@ -87,9 +87,9 @@ int GetCurrentTime(){
  * @return 0:没有升级 1：有升级
  */
 int CheckUpgradeResult() {
-    char *sMsg = AIcom_GetConfigString((char *) "Update", (char *) "LastVersion",(char *) UPGRADE_FILE);
+    char *sMsg = AIcom_GetConfigString((char *) "Update", (char *) "LastVersion",(char *) UPDATE_FILE);
     if (sMsg == NULL) {
-        printf("Fail to get Update in %s!\n", UPGRADE_FILE);
+        printf("Fail to get Update in %s!\n", UPDATE_FILE);
         return (AI_NG);
     };
     //strcpy(sService, sMsg);
@@ -188,7 +188,8 @@ void *Do_Download2(void *arg) {
         //下载失败，把失败原因写进/data/aawant.conf
         ChangeUpgradeFile();
 
-        SetUpgStage(UPG_STAGE_END);
+
+        AAWANTSendPacketHead(server_sock,PKT_SYSTEM_UPGRADE_FAIL);
 
     } else {
         printf("[%s]==>sucess\n", __FUNCTION__);
@@ -198,6 +199,7 @@ void *Do_Download2(void *arg) {
         //Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
         //上报下载结果
         //    ReportDownloadResult();
+        AAWANTSendPacketHead(server_sock,PKT_SYSTEM_SHUTDOWN);
 
 #if 0
         memset(dl_param.save_path, 0, sizeof(dl_param.save_path));
@@ -212,7 +214,7 @@ void *Do_Download2(void *arg) {
         //system("reboot");
 #endif
     }
-
+    SetUpgStage(UPG_STAGE_END);
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
 }
 
