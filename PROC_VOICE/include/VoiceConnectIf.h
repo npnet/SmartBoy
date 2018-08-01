@@ -34,6 +34,7 @@ void recognizerStart(void *_listener, float _soundTime);
 void recognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_data, int _dataLen);
 
 void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches, int _matchesLen);
+
 void voice_decoder_VoiceRecognizer_init(int _sampleRate);
 void voice_decoder_VoiceRecognizer_setFreqs(int _freqs[],int n);
 int  recorderShortWrite(void *_writer, const void *_data, unsigned long _sampleCout);

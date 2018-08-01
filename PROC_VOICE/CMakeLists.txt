@@ -27,6 +27,6 @@ endif ()
 
 INCLUDE_DIRECTORIES(../include)
 INCLUDE_DIRECTORIES(include)
-ADD_EXECUTABLE(voicon src/VoiceConnectIf.cpp VoiceConnectService.c)
+ADD_EXECUTABLE(voicon  VoiceConnectService.c)
 TARGET_LINK_LIBRARIES(voicon aawant voice pthread)
 
