@@ -1,7 +1,7 @@
 
-#include "../include/log.h"
-#include "../include/common.h"
-#include "../include/signalGenerator.h"
+#include "log.h"
+#include "common.h"
+#include "signalGenerator.h"
 
 const char *TAG_SignalGenerator = "Generator";
 

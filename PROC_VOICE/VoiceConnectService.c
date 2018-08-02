@@ -30,6 +30,7 @@
 #include "pthread.h"
 
 #include "VoiceConnectIf.h"
+#include "voiceRecog.h"
 
 
 int					 server_sock;		// 服务器SOCKET

@@ -18,6 +18,8 @@
 #include "util.h"
 #include "memory.h"
 #include "common.h"
+#include "voiceRecog.h"
+
 #include "VoiceConnectIf.h"
 
 typedef struct Object{}jobject;
@@ -306,10 +308,10 @@ void recognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_d
     handler.sendMessage(handler.obtainMessage(MSG_RECG_TEXT, data));
 #endif
     char *data;
-    WiFiInfo wifiInfo;
+    struct WiFiInfo wifiInfo;
     int result=0;
     char resData[4096];
-    InfoType infoType=vr_decodeInfoType(_data,_dataLen);
+    enum InfoType infoType=vr_decodeInfoType(_data,_dataLen);
     if(infoType==IT_WIFI) {
         vr_decodeWiFi(result,_data,_dataLen,&wifiInfo);
     } else if(infoType==IT_SSID_WIFI){
@@ -375,7 +377,7 @@ void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches,
 
 }
 
- void voice_decoder_VoiceRecognizer_init( int _sampleRate)
+void voice_decoder_VoiceRecognizer_init(int _sampleRate)
 {
     if(jrecognizer != NULL)
     {
@@ -395,7 +397,7 @@ void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches,
  * @param _freqs
  * @param n
  */
- void  voice_decoder_VoiceRecognizer_setFreqs( int _freqs[],int n)
+void  voice_decoder_VoiceRecognizer_setFreqs(int _freqs[],int n)
 {
     int *freqs ;
     int len ;
@@ -422,7 +424,7 @@ void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches,
 }
 
 //===========
-int recorderShortWrite(void *_writer,char *_data, unsigned long _sampleCout) {
+int recorderShortWrite(void *_writer,const void *_data, unsigned long _sampleCout) {
     char *data = (char *)_data;
     void *recognizer = _writer;
     const int bytePerFrame = 2;
@@ -469,7 +471,7 @@ void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
             return;
         }
 
-        r = startRecord(recorder, recognizer, (r_pwrite )recorderShortWrite);
+        r = startRecord(recorder, recognizer, (r_pwrite) recorderShortWrite);
         if (r != 0) {
             printf("recorder record error:%d", r);
             return;
