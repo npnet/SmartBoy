@@ -13,11 +13,7 @@
 #define _AAWANTDATA_H
 
 //#define  CONFIG_FILE  (char *)"/data/etc/aawant.conf"
-
-#define CONFIG_FILE (char *)"/data/etc/aawant.conf"
-#define UPDATE_FILE (char *)"/data/etc/update.conf"
-
-
+#define CONFIG_FILE (char *)"/home/cary/App/data/etc/aawant.conf"
 #define BUFSIZE 512
 #define ALARM_FIELD_SIZE 80 // 闹钟ID最大长度
 
@@ -75,6 +71,12 @@
 
 //配网进程--->主控进程--->IOT
 #define PKT_SYSTEM_UPGRADE_FAIL      14  //升级失败
+
+//相关子进程 --->主控进程
+#define PKT_SYSTEM_NETWORK_STATUS    15   //询问当前网络状态 
+
+//外围进程 --->主控进程
+#define PKT_SYSTEM_TB_KEY_VALUE      16  //触控按键键值
 
 // IOT --->  主控进程 ---> 相关子进程
 #define PKT_ROBOT_WIFI_CHANGE 101 // 更换WIFI

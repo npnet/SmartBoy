@@ -1,7 +1,7 @@
 //
 // Created by sine on 18-8-2.
 //
-
+#include "tinycthread.h"
 static SLObjectItf engineObject = NULL;
 static SLEngineItf engineEngine;
 #define androidPlayQueueBufferCount 3
@@ -15,6 +15,84 @@ static SLObjectItf outputMixObject = NULL;
 
 static FILE * gFile = NULL;
 
+static int playerRef = 0;
+static int recorderRef = 0;
+typedef unsigned int SLresult;
+
+struct SLObjectItf_ {
+    SLresult (*Realize) (
+            SLObjectItf self,
+            SLboolean async
+    );
+    SLresult (*Resume) (
+            SLObjectItf self,
+            SLboolean async
+    );
+    SLresult (*GetState) (
+            SLObjectItf self,
+            SLuint32 * pState
+    );
+    SLresult (*GetInterface) (
+            SLObjectItf self,
+            const SLInterfaceID iid,
+            void * pInterface
+    );
+    SLresult (*RegisterCallback) (
+            SLObjectItf self,
+            slObjectCallback callback,
+            void * pContext
+    );
+    void (*AbortAsyncOperation) (
+            SLObjectItf self
+    );
+    void (*Destroy) (
+            SLObjectItf self
+    );
+    SLresult (*SetPriority) (
+            SLObjectItf self,
+            SLint32 priority,
+            SLboolean preemptable
+    );
+    SLresult (*GetPriority) (
+            SLObjectItf self,
+            SLint32 *pPriority,
+            SLboolean *pPreemptable
+    );
+    SLresult (*SetLossOfControlInterfaces) (
+            SLObjectItf self,
+            SLint16 numInterfaces,
+            SLInterfaceID * pInterfaceIDs,
+            SLboolean enabled
+    );
+};
+
+typedef struct SLAndroidSimpleBufferQueueState_ {
+    SLuint32	count;
+    SLuint32	index;
+} SLAndroidSimpleBufferQueueState;
+
+
+struct SLAndroidSimpleBufferQueueItf_ {
+    SLresult (*Enqueue) (
+            SLAndroidSimpleBufferQueueItf self,
+            const void *pBuffer,
+            SLuint32 size
+    );
+    SLresult (*Clear) (
+            SLAndroidSimpleBufferQueueItf self
+    );
+    SLresult (*GetState) (
+            SLAndroidSimpleBufferQueueItf self,
+            SLAndroidSimpleBufferQueueState *pState
+    );
+    SLresult (*RegisterCallback) (
+            SLAndroidSimpleBufferQueueItf self,
+            slAndroidSimpleBufferQueueCallback callback,
+            void* pContext
+    );
+};
+
+
 
 struct AudioRecorderInfo
 {
@@ -25,9 +103,10 @@ struct AudioRecorderInfo
     void *writer;
     r_pwrite write;
 
-    SLObjectItf recorderObject;
-    SLRecordItf recorderRecord;
-    SLAndroidSimpleBufferQueueItf recorderBufferQueue;
+   // SLObjectItf recorderObject;
+   // SLRecordItf recorderRecord;
+   // SLAndroidSimpleBufferQueueItf recorderBufferQueue;
+
 };
 
 struct AudioPlayerInfo
@@ -41,9 +120,9 @@ struct AudioPlayerInfo
     struct BufferData *playingBuffer;
     mtx_t playingBufMtx;
 
-    SLObjectItf bqPlayerObject;
-    SLPlayItf bqPlayerPlay;
-    SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
+   // SLObjectItf bqPlayerObject;
+   // SLPlayItf bqPlayerPlay;
+   // SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 
 };
 
@@ -126,3 +205,175 @@ unsigned int capture_sample(FILE *file, unsigned int card, unsigned int device,
     pcm_close(pcm);
     return pcm_bytes_to_frames(pcm, bytes_read);
 }
+
+
+void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+{
+
+    struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)context;
+    myassert(bq == recorder->recorderBufferQueue);
+
+    SLresult result;
+    recorder->write(recorder->writer, recorder->recordingBuffer, recorder->recordingBufFrames);
+
+    result = (*recorder->recorderBufferQueue)->Enqueue(recorder->recorderBufferQueue, recorder->recordingBuffer,
+                                                       recorder->recordingBufLen);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+
+#ifdef SAVE_PCM_DATA
+    if(gFile != NULL)
+    {
+    	fwrite(recorder->recordingBuffer, recorder->recordingBufLen, 1, gFile);
+    }
+#endif
+}
+
+int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _bufferSize, void **_precorder)
+{
+    androidLog("initRecorder");
+    createOpenSLEngine();
+
+    recorderRef ++;
+
+    struct AudioRecorderInfo *recorder = mymalloc(sizeof(struct AudioRecorderInfo));
+
+    recorder->recordingBufFrames = _bufferSize;
+    recorder->recordingBufLen = _bufferSize * (_audioFormat/8) * _channel;
+    recorder->recordingBuffer = mymalloc(recorder->recordingBufLen);
+    //recorder->recorderObject = NULL;
+    recorder->writer = NULL;
+    recorder->write = NULL;
+    *_precorder = recorder;
+
+    /*
+    SLresult result;
+
+    SLDataLocator_IODevice loc_dev = {SL_DATALOCATOR_IODEVICE, SL_IODEVICE_AUDIOINPUT,
+                                      SL_DEFAULTDEVICEID_AUDIOINPUT, NULL};
+    SLDataSource audioSrc = {&loc_dev, NULL};
+
+    SLDataLocator_AndroidSimpleBufferQueue loc_bq = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
+    SLDataFormat_PCM format_pcm = {SL_DATAFORMAT_PCM, 1, ((SLuint32)_sampleRateInHz) * 1000,
+                                   SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
+                                   SL_SPEAKER_FRONT_CENTER, SL_BYTEORDER_LITTLEENDIAN};
+    SLDataSink audioSnk = {&loc_bq, &format_pcm};
+
+    const SLInterfaceID id[1] = {SL_IID_ANDROIDSIMPLEBUFFERQUEUE};
+    const SLboolean req[1] = {SL_BOOLEAN_TRUE};
+    result = (*engineEngine)->CreateAudioRecorder(engineEngine, &recorder->recorderObject, &audioSrc,
+                                                  &audioSnk, 1, id, req);
+    androidLog("CreateAudioRecorder xxxxxxxxxxxxx:%d", result);
+    if (SL_RESULT_SUCCESS != result) {
+        return JNI_FALSE;
+    }
+
+    result = (*recorder->recorderObject)->Realize(recorder->recorderObject, SL_BOOLEAN_FALSE);
+    androidLog("recorder Realize:%d", result);
+    if (SL_RESULT_SUCCESS != result) {
+        return JNI_FALSE;
+    }
+
+    result = (*recorder->recorderObject)->GetInterface(recorder->recorderObject, SL_IID_RECORD, &recorder->recorderRecord);
+    androidLog("GetInterface SL_IID_RECORD:%d", result);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+
+    result = (*recorder->recorderObject)->GetInterface(recorder->recorderObject, SL_IID_ANDROIDSIMPLEBUFFERQUEUE,
+                                                       &recorder->recorderBufferQueue);
+    androidLog("GetInterface SL_IID_ANDROIDSIMPLEBUFFERQUEUE:%d", result);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+*/
+    result = (*recorder->recorderBufferQueue)->RegisterCallback(recorder->recorderBufferQueue, recorderCallback,
+                                                                recorder);
+    androidLog("recorder RegisterCallback:%d", result);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+
+    return 0;
+}
+
+int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
+{
+    androidLog("startRecord");
+    struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
+    recorder->writer = _writer;
+    recorder->write = _pwrite;
+
+    SLresult result;
+
+    result = (*recorder->recorderRecord)->SetRecordState(recorder->recorderRecord, SL_RECORDSTATE_STOPPED);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+    result = (*recorder->recorderBufferQueue)->Clear(recorder->recorderBufferQueue);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+
+    result = (*recorder->recorderBufferQueue)->Enqueue(recorder->recorderBufferQueue, recorder->recordingBuffer,
+                                                       recorder->recordingBufLen);
+
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+
+    result = (*recorder->recorderRecord)->SetRecordState(recorder->recorderRecord, SL_RECORDSTATE_RECORDING);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+
+#ifdef SAVE_PCM_DATA
+    if(gFile == NULL)
+    {
+
+    	    	char *pcmFileName = "/data/data/com.example.wifilist/cache/data.pcm";
+    	    	gFile = fopen(pcmFileName, "wb");
+    	    	androidLog("%s open:%s\n", pcmFileName, (gFile?"success":"fail"));
+    	myassert(gFile != NULL);
+    }
+#endif
+
+    return 0;
+}
+
+int stopRecord(void *_recorder)
+{
+    struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
+    SLresult result;
+
+    result = (*recorder->recorderRecord)->SetRecordState(recorder->recorderRecord, SL_RECORDSTATE_STOPPED);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+    result = (*recorder->recorderBufferQueue)->Clear(recorder->recorderBufferQueue);
+    myassert(SL_RESULT_SUCCESS == result);
+    (void)result;
+
+#ifdef SAVE_PCM_DATA
+    if(gFile != NULL)
+    {
+    	fclose(gFile);
+    	gFile = NULL;
+    }
+#endif
+
+    return 0;
+}
+
+int releaseRecorder(void *_recorder)
+{
+    recorderRef --;
+
+    struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
+
+    myfree(recorder->recordingBuffer);
+    if (recorder->recorderObject != NULL) {
+        (*recorder->recorderObject)->Destroy(recorder->recorderObject);
+        recorder->recorderObject = NULL;
+        recorder->recorderRecord = NULL;
+        recorder->recorderBufferQueue = NULL;
+    }
+    myfree(recorder);
+
+    destoryOpenSLEngine();
+
+    return 0;
+}
+
