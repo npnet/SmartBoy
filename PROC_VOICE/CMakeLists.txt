@@ -43,6 +43,6 @@ endif ()
 
 INCLUDE_DIRECTORIES(../include)
 INCLUDE_DIRECTORIES(include)
-ADD_EXECUTABLE(voicon  VoiceConnectService.c)
+ADD_EXECUTABLE(voicon  VoiceConnectService.c pcm.c recorder.c)
 TARGET_LINK_LIBRARIES(voicon aawant voiceRecog pthread m)
 

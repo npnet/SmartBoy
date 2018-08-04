@@ -45,7 +45,7 @@
 #define __bitwise
 #define __user
 #include <sound/asound.h>
-
+#include "asoundlib.h"
 //b#include <tinyalsa/asoundlib.h>
 
 #define PARAM_MAX SNDRV_PCM_HW_PARAM_LAST_INTERVAL
@@ -876,14 +876,19 @@ struct pcm *pcm_open(unsigned int card, unsigned int device,
                    pcm_format_to_alsa(config->format));
     param_set_mask(&params, SNDRV_PCM_HW_PARAM_SUBFORMAT,
                    SNDRV_PCM_SUBFORMAT_STD);
+    //周期，每次硬件中断处理音频数据的帧数，对于音频设备的数据读写，以此为单位
     param_set_min(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, config->period_size);
+    //采样数据多少位
     param_set_int(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
                   pcm_format_to_bits(config->format));
     param_set_int(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
                   pcm_format_to_bits(config->format) * config->channels);
+    //通道
     param_set_int(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
                   config->channels);
+    //
     param_set_int(&params, SNDRV_PCM_HW_PARAM_PERIODS, config->period_count);
+    //采样频率？
     param_set_int(&params, SNDRV_PCM_HW_PARAM_RATE, config->rate);
 
     if (flags & PCM_NOIRQ) {

@@ -1,7 +1,13 @@
 //
 // Created by sine on 18-8-2.
 //
+#include <stdio.h>
+#include <PROC_VOICE/include/audioRecorder.h>
 #include "tinycthread.h"
+#include "asoundlib.h"
+#include "malloc.h"
+
+#if 0
 static SLObjectItf engineObject = NULL;
 static SLEngineItf engineEngine;
 #define androidPlayQueueBufferCount 3
@@ -66,6 +72,71 @@ struct SLObjectItf_ {
     );
 };
 
+typedef const struct SLObjectItf_ * const * SLObjectItf;
+
+
+struct SLRecordItf_;
+typedef const struct SLRecordItf_ * const * SLRecordItf;
+
+typedef void (SLAPIENTRY *slRecordCallback) (
+    SLRecordItf caller,
+    void *pContext,
+        SLuint32 event
+);
+
+/** Recording interface methods */
+struct SLRecordItf_ {
+    SLresult (*SetRecordState) (
+            SLRecordItf self,
+            SLuint32 state
+    );
+    SLresult (*GetRecordState) (
+            SLRecordItf self,
+            SLuint32 *pState
+    );
+    SLresult (*SetDurationLimit) (
+            SLRecordItf self,
+            SLmillisecond msec
+    );
+    SLresult (*GetPosition) (
+            SLRecordItf self,
+            SLmillisecond *pMsec
+    );
+    SLresult (*RegisterCallback) (
+            SLRecordItf self,
+            slRecordCallback callback,
+            void *pContext
+    );
+    SLresult (*SetCallbackEventsMask) (
+            SLRecordItf self,
+            SLuint32 eventFlags
+    );
+    SLresult (*GetCallbackEventsMask) (
+            SLRecordItf self,
+            SLuint32 *pEventFlags
+    );
+    SLresult (*SetMarkerPosition) (
+            SLRecordItf self,
+            SLmillisecond mSec
+    );
+    SLresult (*ClearMarkerPosition) (
+            SLRecordItf self
+    );
+    SLresult (*GetMarkerPosition) (
+            SLRecordItf self,
+            SLmillisecond *pMsec
+    );
+    SLresult (*SetPositionUpdatePeriod) (
+            SLRecordItf self,
+            SLmillisecond mSec
+    );
+    SLresult (*GetPositionUpdatePeriod) (
+            SLRecordItf self,
+            SLmillisecond *pMsec
+    );
+};
+
+
 typedef struct SLAndroidSimpleBufferQueueState_ {
     SLuint32	count;
     SLuint32	index;
@@ -103,7 +174,7 @@ struct AudioRecorderInfo
     void *writer;
     r_pwrite write;
 
-   // SLObjectItf recorderObject;
+    SLObjectItf recorderObject;
    // SLRecordItf recorderRecord;
    // SLAndroidSimpleBufferQueueItf recorderBufferQueue;
 
@@ -142,7 +213,7 @@ struct wav_header {
     uint32_t data_id;
     uint32_t data_sz;
 };
-
+#endif
 struct recorder{
     int fd;
     int channels;   //通道
@@ -209,7 +280,7 @@ unsigned int capture_sample(FILE *file, unsigned int card, unsigned int device,
 
 void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
-
+#if 0
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)context;
     myassert(bq == recorder->recorderBufferQueue);
 
@@ -227,10 +298,13 @@ void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
     	fwrite(recorder->recordingBuffer, recorder->recordingBufLen, 1, gFile);
     }
 #endif
+#endif
 }
 
 int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _bufferSize, void **_precorder)
 {
+
+#if 0
     androidLog("initRecorder");
     createOpenSLEngine();
 
@@ -246,7 +320,6 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
     recorder->write = NULL;
     *_precorder = recorder;
 
-    /*
     SLresult result;
 
     SLDataLocator_IODevice loc_dev = {SL_DATALOCATOR_IODEVICE, SL_IODEVICE_AUDIOINPUT,
@@ -284,7 +357,7 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
     androidLog("GetInterface SL_IID_ANDROIDSIMPLEBUFFERQUEUE:%d", result);
     myassert(SL_RESULT_SUCCESS == result);
     (void)result;
-*/
+
     result = (*recorder->recorderBufferQueue)->RegisterCallback(recorder->recorderBufferQueue, recorderCallback,
                                                                 recorder);
     androidLog("recorder RegisterCallback:%d", result);
@@ -292,10 +365,51 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
     (void)result;
 
     return 0;
+#endif
+    struct pcm_config config;
+    struct pcm *pcm;
+    char *buffer;
+    unsigned int size;
+    unsigned int bytes_read = 0;
+
+    unsigned int card=0;
+    unsigned int device=0;
+
+
+    config.channels = _channel;//通道
+    config.rate = _sampleRateInHz;
+    config.period_size = period_size;
+    config.period_count = period_count;
+    config.format = _audioFormat;
+    config.start_threshold = 0;
+    config.stop_threshold = 0;
+    config.silence_threshold = 0;
+
+    pcm = pcm_open(card, device, PCM_IN, &config);
+    if (!pcm || !pcm_is_ready(pcm)) {
+        fprintf(stderr, "Unable to open PCM device (%s)\n",
+                pcm_get_error(pcm));
+        return 0;
+    }
+
+    size = pcm_frames_to_bytes(pcm, pcm_get_buffer_size(pcm));
+    buffer = malloc(size);
+    if (!buffer) {
+        fprintf(stderr, "Unable to allocate %d bytes\n", size);
+        free(buffer);
+        pcm_close(pcm);
+        return 0;
+    }
+
+    printf("Capturing sample: %u ch, %u hz, %u bit\n", config.channels, config.rate,
+           pcm_format_to_bits(config.format));
+
+
 }
 
 int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
 {
+#if 0
     androidLog("startRecord");
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
     recorder->writer = _writer;
@@ -332,10 +446,20 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
 #endif
 
     return 0;
+#endif
+
+    while (capturing && !pcm_read(pcm, buffer, size)) {
+        if (fwrite(buffer, 1, size, file) != size) {
+            fprintf(stderr,"Error capturing sample\n");
+            break;
+        }
+        bytes_read += size;
+    }
 }
 
 int stopRecord(void *_recorder)
 {
+#if 0
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
     SLresult result;
 
@@ -355,10 +479,12 @@ int stopRecord(void *_recorder)
 #endif
 
     return 0;
+#endif
 }
 
 int releaseRecorder(void *_recorder)
 {
+#if 0
     recorderRef --;
 
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
@@ -373,6 +499,7 @@ int releaseRecorder(void *_recorder)
     myfree(recorder);
 
     destoryOpenSLEngine();
+#endif
 
     return 0;
 }
