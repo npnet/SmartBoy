@@ -21,3 +21,11 @@
 4.Rate：又称 sample rate，采样率，即每秒的采样次数，针对帧而言；
 5.Period Size：周期，每次硬件中断处理音频数据的帧数，对于音频设备的数据读写，以此为单位；
 6.Buffer Size：数据缓冲区大小，这里指 runtime 的 buffer size，而不是结构图 snd_pcm_hardware 中定义的 buffer_bytes_max；一般来说 buffer_size = period_size * period_count， period_count 相当于处理完一个 buffer 数据所需的硬件中断次数。
+
+example:
+单声道
+|sample  |rate      |period size   |period count
+|8bit/次 |44100 次/秒|13 帧/次（中断）| 15 次（中断)/个(buffer)
+
+44100 bytes/sec
+13 *15 bytes

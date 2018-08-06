@@ -2,7 +2,7 @@
 * FILE     : AawantUpgrade.c
 * CONTENT  : 升级服务主程序
 *********************************************************/
-#include <stdio.h>
+//#include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
@@ -17,10 +17,17 @@
 #include "AIUComm.h"
 #include "cJSON.h"
 #include <upg_control.h>
+//#include <c++/5/string>
 #include "upg_download.h"
 #include "HttpClient.h"
 #include "systool.h"
 
+#define REPORT_DOWNLOAD_PATH  "www.aawant.com/speaker/0.0.1/release/equipment/afterDownload"
+#define REPORT_UPGRADE_PATH "www.aawant.com/speaker/0.0.1/release/EquipmentUpdateReportWebServlet"
+const char *A_REPORT_DOWNLOAD_PATH=REPORT_DOWNLOAD_PATH;
+const char *A_REPORT_UPGRADE_PATH=REPORT_UPGRADE_PATH;
+char MAC[20];
+struct UpdateInfoMsg_Iot_Data iotData;
 
 typedef enum{
     NOTHING=0,
@@ -28,6 +35,24 @@ typedef enum{
     UPGRADING,
     FINISH
 }WHATDOING;
+
+//{"mac":"xxxx","time":1300000000000,"info":"","type":1,"toVersion":2,"nowVersion":1,"model":"mtk6735","updateUrl":"http://www.aawant.com/xxxx.zip","id":"xxxxxx","ids":1}
+
+typedef struct UpgradeReport_T{
+  char mac[20];
+  int time_t;
+  char info[2];
+  int type;
+  int toVersion;
+  int nowVersion;
+  char model[256];
+  char updateUrl[256];
+  char id[10];
+  int ids;
+
+}UpgradeReport;
+
+UpgradeReport upgReport;
 
 /**
  * 情景：升级已经在进行中，但这时候再一次收到升级信息，这时候通过这变量来忽略
@@ -82,6 +107,118 @@ int GetCurrentTime(){
     return ms;
 }
 
+
+int COnWriteData(void* buffer, size_t size, size_t nmemb, char * useless)
+{
+    char value[BUFSIZE] = {0};
+    char htvalue[BUFSIZE] = {0};
+    char *v = NULL;
+
+    memcpy(value, (char *)buffer, size*nmemb);
+    printf("-------%s\n", value);
+    v = strstr(value, "\"data\"");
+    if (NULL != v)
+    {
+        memcpy(htvalue, "{", 1);
+        strcat(htvalue, v);
+        //printf("-------%s\n", htvalue);
+    }
+    else
+    {
+
+    }
+
+    return 0;
+}
+/*
+static size_t COnWriteData(void* buffer, size_t size, size_t nmemb, void* lpVoid)
+{
+    std::string* str = dynamic_cast<std::string*>((std::string *)lpVoid);
+    if( NULL == str || NULL == buffer )
+    {
+        return -1;
+    }
+
+    char* pData = (char*)buffer;
+    str->append(pData, size * nmemb);
+    return nmemb;
+}
+*/
+int CPost(const char *url, const char *data , char *Response)
+{
+    CURLcode res;
+    CURL* curl = curl_easy_init();
+    if(NULL == curl)
+    {
+    return CURLE_FAILED_INIT;
+    }
+    /*
+    if(m_bDebug)
+    {
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, OnDebug);
+    }
+    */
+    curl_easy_setopt(curl, CURLOPT_URL, url);//url地址
+    curl_easy_setopt(curl, CURLOPT_POST, 1);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);//post参数
+    curl_easy_setopt(curl, CURLOPT_READFUNCTION, NULL);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, COnWriteData);//接收的数据
+    /**
+     * 如果不想用回调函数而保存数据，那么可以使用 CURLOPT_WRITEDATA 选项，使用该选项时，
+     * 函数的第 3 个参数必须是个 FILE 指针，函数会将接收到的数据自动的写到这个 FILE 指针所指向的文件流中。
+     */
+     if(NULL!=Response){
+         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)Response);
+     }
+
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 3);
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+    return res;
+}
+
+int CGet(const char *url, char * Response)
+{
+    CURLcode res;
+    CURL* curl = curl_easy_init();
+    if(NULL == curl)
+    {
+    return CURLE_FAILED_INIT;
+    }
+    /*
+    if(m_bDebug)
+    {
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, OnDebug);
+    }
+     */
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_READFUNCTION, NULL);
+    //返回数据写进文件
+    if(NULL!=Response){
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)Response);
+    } else{
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, COnWriteData);
+    }
+
+
+    /**
+    * 当多个线程都使用超时处理的时候，同时主线程中有sleep或是wait等操作。
+    * 如果不设置这个选项，libcurl将会发信号打断这个wait从而导致程序退出。
+    */
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 4);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 4);
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+    return res;
+}
+
+
+
 /**
  * 检查上次运行是否有升级及升级结果
  * @return 0:没有升级 1：有升级
@@ -105,39 +242,54 @@ int CheckUpgradeResult() {
 void ReportDownloadResult(){
 
     char strUrl[256];
+    char *data="?mac=";
     char strResponse[256];
-    //www.aawant.com/speaker/0.0.1/release/equipment/afterDownload
-    //Get(strUrl,strResponse);
+    char mac[17];
+    memset(strUrl,0,sizeof(strUrl));
+    strcpy(strUrl,A_REPORT_DOWNLOAD_PATH);
+    strcat(strUrl,data);
+    printf("get==>%s\n",strUrl);
+    GetMac(mac,"wlan0");
+    strcat(strUrl,mac);
+    printf("url==>%s\n",strUrl);
+    CGet(strUrl,NULL);
 }
-
-
-
-
 
 /**
  * 上报升级结果
  * {"mac":"xxxx","time":1300000000000,"info":"","type":1,"toVersion":2,"nowVersion":1,
  * "model":"mtk6735","updateUrl":"http://www.aawant.com/xxxx.zip","id":"xxxxxx","ids":1}
  */
-void ReportUpgradeResult(char *mac,int time,int type,int toVersion,
-    int nowVersion,char *model,char *updateUrl,char *id,int ids){
+//void ReportUpgradeResult(char *mac,int time,int type,int toVersion,
+//    int nowVersion,char *model,char *updateUrl,char *id,int ids){
+void ReportUpgradeResult(UpgradeReport *rp){
 
     char json[4096];
+    char data[4096];
+    // char Mac[20];
+
     cJSON *root=cJSON_CreateObject();
 
-    cJSON_AddItemToObject(root, "mac", cJSON_CreateString(mac));
-    cJSON_AddItemToObject(root,"time",cJSON_CreateNumber(time));
-    cJSON_AddItemToObject(root,"info",cJSON_CreateString(""));
-    cJSON_AddItemToObject(root,"type",cJSON_CreateNumber(type));
-    cJSON_AddItemToObject(root,"toVersion",cJSON_CreateNumber(toVersion));
-    cJSON_AddItemToObject(root,"nowVersion",cJSON_CreateNumber(nowVersion));
-    cJSON_AddItemToObject(root,"model",cJSON_CreateString(model));
-    cJSON_AddItemToObject(root,"updateUrl",cJSON_CreateString(updateUrl));
-    cJSON_AddItemToObject(root,"id",cJSON_CreateString(id));
-    cJSON_AddItemToObject(root,"ids",cJSON_CreateNumber(ids));
+    cJSON_AddItemToObject(root, "mac", cJSON_CreateString(rp->mac));
+    cJSON_AddItemToObject(root,"time",cJSON_CreateNumber(rp->time_t));
+    cJSON_AddItemToObject(root,"info",cJSON_CreateString(rp->info));
+    cJSON_AddItemToObject(root,"type",cJSON_CreateNumber(rp->type));
+    cJSON_AddItemToObject(root,"toVersion",cJSON_CreateNumber(rp->toVersion));
+    cJSON_AddItemToObject(root,"nowVersion",cJSON_CreateNumber(rp->nowVersion));
+    cJSON_AddItemToObject(root,"model",cJSON_CreateString(rp->model));
+    cJSON_AddItemToObject(root,"updateUrl",cJSON_CreateString(rp->updateUrl));
+    cJSON_AddItemToObject(root,"id",cJSON_CreateString(rp->id));
+    cJSON_AddItemToObject(root,"ids",cJSON_CreateNumber(rp->ids));
 
     printf("%s\n", cJSON_Print(root));
-   // Post(cJSON_Print(root));
+    memset(data,0,sizeof(data));
+    strcpy(data,A_REPORT_UPGRADE_PATH);
+    strcat(data,"?data=");
+    strcat(data,cJSON_Print(root));
+    printf("data==>%s\n",data);
+
+
+        // CPost(A_REPORT_UPGRADE_PATH,cJSON_Print(root),Response);
 
 
 }
@@ -198,8 +350,8 @@ void *Do_Download2(void *arg) {
 
         //Aawant_Set_Upgrade_Status(E_UPG_CONTROL_UPGRADE_STATUS_CANCELLED);
         //上报下载结果
-        //    ReportDownloadResult();
-        AAWANTSendPacketHead(server_sock,PKT_SYSTEM_SHUTDOWN);
+        ReportDownloadResult();
+
 
 #if 0
         memset(dl_param.save_path, 0, sizeof(dl_param.save_path));
@@ -213,6 +365,8 @@ void *Do_Download2(void *arg) {
         SetUpgStage(UPG_STAGE_END);
         //system("reboot");
 #endif
+
+        AAWANTSendPacketHead(server_sock,PKT_SYSTEM_SHUTDOWN);
     }
     SetUpgStage(UPG_STAGE_END);
     printf("-----------------[%s][End]---------------\n", __FUNCTION__);
@@ -625,6 +779,8 @@ int main(int argc, char *argv[]) {
     struct timeval timeout_select;
     int nError;
     int rs;
+    //char mac[50];
+    char *net="wlan0";
 
     AIcom_ChangeToDaemon();
 
@@ -672,6 +828,12 @@ int main(int argc, char *argv[]) {
 
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
+
+    memset(&upgReport,0,sizeof(upgReport));
+    GetMac(MAC,net);
+    strcpy(upgReport.mac,MAC);
+    upgReport.ids=1;
+
 
     //检查上次运行是否有升级及升级结果
    // rs=CheckUpgradeResult();
@@ -842,6 +1004,12 @@ int main(int argc, char *argv[]) {
                     if(updateData!=NULL){
                         printf("\n%s\n",updateData->updateUrl);
                     }
+
+                    strcpy(iotData.updateUrl,updateData->updateUrl);
+                    iotData.toVersion=updateData->toVersion;
+                    iotData.nowVersion=updateData->nowVersion;
+                    strcpy(iotData.model,updateData->model);
+                    strcpy(iotData.id,updateData->id);
 
                     strcpy(dl_param.url,updateData->updateUrl);
                     strcpy(dl_param.save_path,UPGRADE_FULL_PKG_SAVE_PATH);
