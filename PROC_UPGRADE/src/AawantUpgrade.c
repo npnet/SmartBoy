@@ -52,7 +52,8 @@ typedef struct UpgradeReport_T{
 
 }UpgradeReport;
 
-UpgradeReport upgReport;
+UpgradeReport oldUpgReport;
+UpgradeReport newUpgReport;
 
 /**
  * 情景：升级已经在进行中，但这时候再一次收到升级信息，这时候通过这变量来忽略
@@ -86,17 +87,8 @@ UPG_STAGE GetUpgStage(){
     return upgStage;
 }
 
+int WriteUpgradeFile(UpgradeReport *newReport){
 
-
-
-int ChangeUpgradeFile(){
-
-}
-
-
-
-int check_CurrentVersion(){
-    return 0;
 }
 
 int GetCurrentTime(){
@@ -144,13 +136,13 @@ static size_t COnWriteData(void* buffer, size_t size, size_t nmemb, void* lpVoid
     return nmemb;
 }
 */
-int CPost(const char *url, const char *data , char *Response)
+int CPost(const char *url, const char *data , char *file)
 {
     CURLcode res;
     CURL* curl = curl_easy_init();
     if(NULL == curl)
     {
-    return CURLE_FAILED_INIT;
+        return CURLE_FAILED_INIT;
     }
     /*
     if(m_bDebug)
@@ -163,14 +155,16 @@ int CPost(const char *url, const char *data , char *Response)
     curl_easy_setopt(curl, CURLOPT_POST, 1);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);//post参数
     curl_easy_setopt(curl, CURLOPT_READFUNCTION, NULL);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, COnWriteData);//接收的数据
+
     /**
      * 如果不想用回调函数而保存数据，那么可以使用 CURLOPT_WRITEDATA 选项，使用该选项时，
      * 函数的第 3 个参数必须是个 FILE 指针，函数会将接收到的数据自动的写到这个 FILE 指针所指向的文件流中。
      */
-     if(NULL!=Response){
-         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)Response);
-     }
+    if(NULL!=file){
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)file);
+    } else{
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, COnWriteData);//接收的数据
+    }
 
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3);
@@ -281,18 +275,19 @@ void ReportUpgradeResult(UpgradeReport *rp){
     cJSON_AddItemToObject(root,"id",cJSON_CreateString(rp->id));
     cJSON_AddItemToObject(root,"ids",cJSON_CreateNumber(rp->ids));
 
-    printf("%s\n", cJSON_Print(root));
+    printf("%s\n", cJSON_PrintUnformatted(root));
+    /*
     memset(data,0,sizeof(data));
     strcpy(data,A_REPORT_UPGRADE_PATH);
     strcat(data,"?data=");
-    strcat(data,cJSON_Print(root));
+    strcat(data,cJSON_PrintUnformatted(root));
     printf("data==>%s\n",data);
+    */
 
-
-        // CPost(A_REPORT_UPGRADE_PATH,cJSON_Print(root),Response);
-
-
+    CPost(rp->updateUrl,cJSON_PrintUnformatted(root),NULL);
 }
+
+
 
 void *Do_Download(void *dl) {
 #if 0
@@ -330,6 +325,8 @@ void *Do_Download(void *dl) {
 
 
 void *Do_Download2(void *arg) {
+
+    int rs;
     Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_DOING);
 
     int ret = StartDownLoad2(dl_param, dl_param.url, dl_param.save_path);
@@ -338,8 +335,8 @@ void *Do_Download2(void *arg) {
         printf("[%s]==>failed\n", __FUNCTION__);
         Aawant_Set_Upgrade_Status(&dl_param, AAW_CTL_DOWNLOAD_FAIL);
         //下载失败，把失败原因写进/data/aawant.conf
-        ChangeUpgradeFile();
-
+        newUpgReport.time_t=GetCurrentTime();
+        newUpgReport.type=3;
 
         AAWANTSendPacketHead(server_sock,PKT_SYSTEM_UPGRADE_FAIL);
 
@@ -352,16 +349,18 @@ void *Do_Download2(void *arg) {
         //上报下载结果
         ReportDownloadResult();
 
-
-#if 0
+#if 1
         memset(dl_param.save_path, 0, sizeof(dl_param.save_path));
         stpcpy(dl_param.save_path, UPGRADE_FULL_PKG_SAVE_PATH);
         strcat(dl_param.save_path, UPGRADE_FULL_PKG_NAME);
 
-
-        FlashImgData(&dl_param);
+        rs=FlashImgData(&dl_param);
         //下载失败，把失败原因写进/data/aawant.conf
-        ChangeUpgradeFile();
+        newUpgReport.time_t=GetCurrentTime();
+        //1升级成功、2校验失败、3、升级失败
+        newUpgReport.type=rs;
+
+        WriteUpgradeFile(&newUpgReport);
         SetUpgStage(UPG_STAGE_END);
         //system("reboot");
 #endif
@@ -829,25 +828,30 @@ int main(int argc, char *argv[]) {
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
 
-    memset(&upgReport,0,sizeof(upgReport));
-    GetMac(MAC,net);
-    strcpy(upgReport.mac,MAC);
-    upgReport.ids=1;
-
+    memset(&oldUpgReport,0,sizeof(oldUpgReport));
+   // GetMac(MAC,net);
+  //  strcpy(upgReport.mac,MAC);
 
     //检查上次运行是否有升级及升级结果
-   // rs=CheckUpgradeResult();
-    /*
-    if(rs==0){
+    rs=CheckUpgradeResult();
+    if(rs) {
+        //把升级结果赋值给type
+        oldUpgReport.type = rs;
 
-        //上报升级结果
-     //   ReportUpgradeResult();
+        GetMac(oldUpgReport.mac, "wlan0");
+        oldUpgReport.time_t = GetCurrentTime();
+        strcpy(oldUpgReport.info, "");
+
+        oldUpgReport.ids = 1;
+        strcpy(oldUpgReport.model, "mt8516");
+        strcpy(oldUpgReport.id, "1");
+        strcpy(oldUpgReport.updateUrl, REPORT_UPGRADE_PATH);
+        oldUpgReport.nowVersion = 0;
+        oldUpgReport.toVersion = 1;
+        ReportUpgradeResult(&oldUpgReport);
     }
-     */
-
     //设置升级的阶段
     SetUpgStage(UPG_STAGE_EARLY);
-
 
     for (;;) {
         FD_ZERO(&readmask);
@@ -873,7 +877,6 @@ int main(int argc, char *argv[]) {
                 //  WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
                 printf("close sock\n");
                 AIEU_TCPClose(server_sock);
-
 
             };
             PacketHead *pHead = (PacketHead *) lpInBuffer;
@@ -1020,6 +1023,18 @@ int main(int argc, char *argv[]) {
                     //检测当前状态，避免多次收到这个包，重复创建线程
                     if(GetUpgStage()==UPG_STAGE_EARLY|GetUpgStage()==UPG_STAGE_END)
                     {
+
+                        strcpy(newUpgReport.updateUrl,updateData->updateUrl);
+                        newUpgReport.toVersion=updateData->toVersion;
+                        newUpgReport.nowVersion=updateData->nowVersion;
+                        strcpy(newUpgReport.id,updateData->id);
+                        strcpy(newUpgReport.model,updateData->model);
+                        newUpgReport.ids=1;
+                        //newUpgReport.type
+                        strcpy(newUpgReport.info,"");
+                        //newUpgReport.time_t
+                        GetMac(newUpgReport.mac,"wlan0");
+
                         createDownloadThread2();
                         CreateSystemTaskThread();
                         SetUpgStage(UPG_STAGE_ING);

@@ -45,4 +45,12 @@ boolean voice_decoder_VoiceRecognizer_isStopped();
 int  voice_decoder_VoiceRecognizer_writeBuf(char *_audio, int _dataSize);
 
 
+
+#if 0
+#define dprintf(...)
+#else
+//#define dprintf(...)    printf("%s",__function__);
+#endif
+#define FUNC_START      printf("%s:==>start\n",__FUNCTION__);
+#define FUNC_END        printf("%s:==>end\n",__FUNCTION__);
 #endif //SMARTBOY_VOICECONNECTIF_H

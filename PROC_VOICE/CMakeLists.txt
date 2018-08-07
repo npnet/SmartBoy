@@ -15,14 +15,16 @@
 
 
 if (cpu STREQUAL arm)
-    SET(CMAKE_C_COMPILER aarch64-poky-linux-g++)
+    SET(CMAKE_C_COMPILER aarch64-poky-linux-gcc)
     LINK_DIRECTORIES(../lib/arm64)
     #设置输出路径
     SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib/arm64)
+    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/arm-bin)
 else ()
     SET(CMAKE_C_COMPILER gcc)
     LINK_DIRECTORIES(../lib/x86)
     SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib/x86)
+    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 endif()
 
 #ADD_DEFINITIONS( "-Winline")
@@ -35,9 +37,9 @@ INCLUDE_DIRECTORIES(include)
 AUX_SOURCE_DIRECTORY(src DIR_SRCS)
 
 if (so STREQUAL share)
-    ADD_LIBRARY(voiceRecog STATIC ${DIR_SRCS})
-else()
     ADD_LIBRARY(voiceRecog SHARED ${DIR_SRCS})
+else()
+    ADD_LIBRARY(voiceRecog STATIC ${DIR_SRCS})
 endif ()
 
 

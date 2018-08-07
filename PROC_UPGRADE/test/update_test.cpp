@@ -3,6 +3,7 @@
 //
 #include <../include/common.h>
 #include <../include/upg_download.h>
+#include <fcntl.h>
 #include "HttpClient.h"
 //#include "string"
 #include "string.h"
@@ -187,17 +188,18 @@ void ReportUpgradeResult(UpgradeReport *rp){
     cJSON_AddItemToObject(root,"id",cJSON_CreateString(rp->id));
     cJSON_AddItemToObject(root,"ids",cJSON_CreateNumber(rp->ids));
 
-    //printf("%s\n", cJSON_Print(root));
+
+
     printf("%s\n", cJSON_PrintUnformatted(root));
+    /*
     memset(data,0,sizeof(data));
     strcpy(data,A_REPORT_UPGRADE_PATH);
     strcat(data,"?data=");
     strcat(data,cJSON_PrintUnformatted(root));
     printf("data==>%s\n",data);
+    */
 
-
-     CGet(data,"/tmp/1.txt");
-
+    CPost(rp->updateUrl,cJSON_PrintUnformatted(root),NULL);
 
 }
 
@@ -232,15 +234,39 @@ int Post(const std::string & strUrl, const std::string & strPost, std::string & 
     return res;
 }
 
+
+
 #endif
+
+
+int WriteUpgradeFile(UpgradeReport *newReport){
+
+//定义flags:只写，文件不存在那么就创建，文件长度戳为0
+//#define FLAGS O_WRONLY | O_CREAT | O_TRUNC
+////创建文件的权限，用户读、写、执行、组读、执行、其他用户读、执行
+//#define MODE S_IRWXU | S_IXGRP | S_IROTH | S_IXOTH
+
+    FILE *file=NULL;
+    //open("/data/test",O_CREAT|O_RDWR|O_TRUNC);
+   // open("data/test.conf",FLAGS,MODE);
+    file=fopen("/data/test.conf","w+");
+    if(NULL!=file){
+//        fwrite();
+        fclose(file);
+    } else{
+        return -1;
+    }
+
+
+}
 int main() {
 #define myurl "http://192.168.1.118/update.bin"
     int a = 4;
     int dl_lenth;
     int ctime;
     //test();
-    ReportDownloadResult();
-    /*
+   // ReportDownloadResult();
+
     memset(&upgReport,0,sizeof(upgReport));
 
     GetMac(upgReport.mac,"wlan0");
@@ -267,7 +293,7 @@ int main() {
     printf("updateUrl=%s\n",upgReport.updateUrl);
 
     ReportUpgradeResult(&upgReport);
-     */
+
     /*
     switch(a) {
         case 1:

@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+#include <PROC_VOICE/include/audioRecorder.h>
 #include "AI_PKTHEAD.h"
 #include "AawantData.h"
 //#include "AIcom_Tool.h"
@@ -31,6 +32,7 @@
 
 #include "VoiceConnectIf.h"
 #include "voiceRecog.h"
+#include "asoundlib.h"
 
 
 int					 server_sock;		// 服务器SOCKET
@@ -142,14 +144,15 @@ int  main(int argc, char *argv[])
 #endif
     };
 #endif
-    int sampleRate;
+    int sampleRate=44100;
     int freqs[19];
-    int length=sizeof(freqs);
+    int length=sizeof(freqs)/ sizeof(int);
     int baseFreq = 16000;
-    sampleRate=44100;
-    int channelConfig;
-    int audioFormat;
-    int bufferSizeInBytes;
+
+    int channelConfig=2;
+    int audioFormat=PCM_FORMAT_S16_LE;
+    int bufferSizeInBytes=sampleRate*channelConfig*2;
+    printf("length=%d\n",length);
 
     //int channelConfig = AudioFormat.CHANNEL_IN_MONO;
     //int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
@@ -160,7 +163,10 @@ int  main(int argc, char *argv[])
     {
         freqs[i] = baseFreq + i * 150;
     }
+
     //
+
+   // initRecorder(sampleRate,channelConfig,audioFormat,bufferSizeInBytes,NULL);
     voice_decoder_VoiceRecognizer_init(sampleRate);
     voice_decoder_VoiceRecognizer_setFreqs(freqs,length);
     voice_decoder_VoiceRecognizer_start(bufferSizeInBytes);

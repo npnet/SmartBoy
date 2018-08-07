@@ -23,7 +23,9 @@
 #include "VoiceConnectIf.h"
 
 typedef struct Object{}jobject;
-static jobject *jrecognizer = NULL;
+typedef struct Recognizer_T{}Recognizer;
+static Recognizer *jrecognizer=NULL;
+//static jobject *jrecognizer = NULL;
 static void *player = NULL;
 static void *recognizer = NULL;
 static pthread_t recogTid = NULL;
@@ -379,16 +381,17 @@ void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches,
 
 void voice_decoder_VoiceRecognizer_init(int _sampleRate)
 {
+    FUNC_START
     if(jrecognizer != NULL)
     {
 
         jrecognizer = NULL;
     }
     recognizerFreqsChanged = false;
-
+    jrecognizer=(Recognizer *)malloc(sizeof(Recognizer));
     recognizerSampleRate = _sampleRate;
     assert(jrecognizer != NULL);
-
+    FUNC_END
 }
 
 
@@ -401,6 +404,7 @@ void  voice_decoder_VoiceRecognizer_setFreqs(int _freqs[],int n)
 {
     int *freqs ;
     int len ;
+    FUNC_START
     freqs=_freqs;
     len=n;
     //可识别的频率有19个？
@@ -421,6 +425,7 @@ void  voice_decoder_VoiceRecognizer_setFreqs(int _freqs[],int n)
     {
         sprintf(buffer+strlen(buffer),"%d,",recognizerFreqs[i]);
     }
+    FUNC_END
 }
 
 //===========
@@ -440,11 +445,12 @@ void *runRecorderVoiceRecognize(void *_recognizer) {
  * @param _minBufferSize
  */
 void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
-    printf("voice_decoder_VoiceRecognizer_start(%d)", _minBufferSize);
+    FUNC_START
+    printf("minBufferSize=(%d)\n", _minBufferSize);
     if (recognizer != NULL && !vr_isRecognizerStopped(recognizer))
         return;
 
-    printf("recognizerFreqs(%d):%d", sizeof(recognizerFreqs) / sizeof(int), recognizerFreqs[0]);
+    printf("recognizerFreqs(%d):%d\n", sizeof(recognizerFreqs) / sizeof(int), recognizerFreqs[0]);
     if (recognizer == NULL) {
 #if ((defined(FREQ_ANALYSE_TIME_MATCH2) && defined(TV_LIB)) || defined(TEST_MATCH_FREQ))
         recognizer = vr_createVoiceRecognizer2(CPUUsePriority, recognizerSampleRate);
@@ -481,6 +487,7 @@ void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
         //开启录音识别线程
         pthread_create(&recogTid, NULL, runRecorderVoiceRecognize, recognizer);
     }
+    FUNC_END
 }
 
 /**

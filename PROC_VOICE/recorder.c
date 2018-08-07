@@ -6,7 +6,7 @@
 #include "tinycthread.h"
 #include "asoundlib.h"
 #include "malloc.h"
-
+#include "VoiceConnectIf.h"
 #if 0
 static SLObjectItf engineObject = NULL;
 static SLEngineItf engineEngine;
@@ -224,7 +224,7 @@ struct recorder{
     int period_count;//
 };
 
-
+/*
 unsigned int capture_sample(FILE *file, unsigned int card, unsigned int device,
                             unsigned int channels, unsigned int rate,
                             enum pcm_format format, unsigned int period_size,
@@ -276,8 +276,29 @@ unsigned int capture_sample(FILE *file, unsigned int card, unsigned int device,
     pcm_close(pcm);
     return pcm_bytes_to_frames(pcm, bytes_read);
 }
+*/
 
+typedef struct SLAndroidSimpleBufferQueueItf_T{
 
+}SLAndroidSimpleBufferQueueItf;
+
+struct AudioRecorderInfo
+{
+
+    char *recordingBuffer;
+    int recordingBufLen;
+    int recordingBufFrames;
+    void *writer;
+    r_pwrite write;
+    struct pcm *rpcm;
+
+    //SLObjectItf recorderObject;
+    // SLRecordItf recorderRecord;
+    // SLAndroidSimpleBufferQueueItf recorderBufferQueue;
+
+};
+
+struct pcm RecordPcm;
 void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
 #if 0
@@ -303,7 +324,7 @@ void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 
 int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _bufferSize, void **_precorder)
 {
-
+    FUNC_START
 #if 0
     androidLog("initRecorder");
     createOpenSLEngine();
@@ -366,6 +387,7 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
 
     return 0;
 #endif
+
     struct pcm_config config;
     struct pcm *pcm;
     char *buffer;
@@ -373,13 +395,13 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
     unsigned int bytes_read = 0;
 
     unsigned int card=0;
-    unsigned int device=0;
+    unsigned int device=2;
 
 
     config.channels = _channel;//通道
     config.rate = _sampleRateInHz;
-    config.period_size = period_size;
-    config.period_count = period_count;
+    config.period_size = 1024;//中断一次产生多少帧数据
+    config.period_count = 4;//一个buffer需要多少次中断
     config.format = _audioFormat;
     config.start_threshold = 0;
     config.stop_threshold = 0;
@@ -401,14 +423,15 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
         return 0;
     }
 
-    printf("Capturing sample: %u ch, %u hz, %u bit\n", config.channels, config.rate,
-           pcm_format_to_bits(config.format));
-
-
+  //  printf("Capturing sample: %u ch, %u hz, %u bit\n", config.channels, config.rate,
+  //         pcm_format_to_bits(config.format));
+    FUNC_END
+    return 0;
 }
 
 int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
 {
+    FUNC_START
 #if 0
     androidLog("startRecord");
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
@@ -447,18 +470,16 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
 
     return 0;
 #endif
+   // struct pcm *pcm;
 
-    while (capturing && !pcm_read(pcm, buffer, size)) {
-        if (fwrite(buffer, 1, size, file) != size) {
-            fprintf(stderr,"Error capturing sample\n");
-            break;
-        }
-        bytes_read += size;
-    }
+   // pcm_start(pcm);
+    FUNC_END
+
 }
 
 int stopRecord(void *_recorder)
 {
+    FUNC_START
 #if 0
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)_recorder;
     SLresult result;
@@ -480,10 +501,16 @@ int stopRecord(void *_recorder)
 
     return 0;
 #endif
+
+    //struct pcm *pcm;
+
+    //pcm_stop(pcm);
+    FUNC_END
 }
 
 int releaseRecorder(void *_recorder)
 {
+    FUNC_START
 #if 0
     recorderRef --;
 
@@ -500,7 +527,7 @@ int releaseRecorder(void *_recorder)
 
     destoryOpenSLEngine();
 #endif
-
+    FUNC_END
     return 0;
 }
 

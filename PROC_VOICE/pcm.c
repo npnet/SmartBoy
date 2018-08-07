@@ -46,6 +46,7 @@
 #define __user
 #include <sound/asound.h>
 #include "asoundlib.h"
+#include "VoiceConnectIf.h"
 //b#include <tinyalsa/asoundlib.h>
 
 #define PARAM_MAX SNDRV_PCM_HW_PARAM_LAST_INTERVAL
@@ -62,6 +63,8 @@
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #endif
+
+
 
 /* refer to SNDRV_PCM_ACCESS_##index in sound/asound.h. */
 static const char * const access_lookup[] = {
@@ -259,6 +262,7 @@ struct pcm {
     int wait_for_avail_min;
 };
 
+
 unsigned int pcm_get_buffer_size(struct pcm *pcm)
 {
     return pcm->buffer_size;
@@ -322,6 +326,14 @@ unsigned int pcm_bytes_to_frames(struct pcm *pcm, unsigned int bytes)
         (pcm_format_to_bits(pcm->config.format) >> 3));
 }
 
+
+/**
+ * 一帧含有多少个字节
+ *
+ * @param pcm
+ * @param frames
+ * @return
+ */
 unsigned int pcm_frames_to_bytes(struct pcm *pcm, unsigned int frames)
 {
     return frames * pcm->config.channels *
@@ -526,10 +538,6 @@ int pcm_read(struct pcm *pcm, void *data, unsigned int count)
     if (!(pcm->flags & PCM_IN))
         return -EINVAL;
 
-    //add by sine
-   // data[0]=0xaa;
-   // x.buf = data+1;
-    //=====
 
     x.frames = count / (pcm->config.channels *
                         pcm_format_to_bits(pcm->config.format) / 8);
@@ -849,7 +857,7 @@ struct pcm *pcm_open(unsigned int card, unsigned int device,
     struct snd_pcm_sw_params sparams;
     char fn[256];
     int rc;
-
+    FUNC_START
     pcm = calloc(1, sizeof(struct pcm));
     if (!pcm || !config)
         return &bad_pcm; /* TODO: could support default config here */
@@ -876,17 +884,18 @@ struct pcm *pcm_open(unsigned int card, unsigned int device,
                    pcm_format_to_alsa(config->format));
     param_set_mask(&params, SNDRV_PCM_HW_PARAM_SUBFORMAT,
                    SNDRV_PCM_SUBFORMAT_STD);
-    //周期，每次硬件中断处理音频数据的帧数，对于音频设备的数据读写，以此为单位
+    //一次中断含有多少次帧数据
     param_set_min(&params, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, config->period_size);
-    //采样数据多少位
+    //采样数据多少位，如8bit，16位，位数多采样精度高
     param_set_int(&params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
                   pcm_format_to_bits(config->format));
+    //一帧数据大小=通道数×采样精度（即多少位）
     param_set_int(&params, SNDRV_PCM_HW_PARAM_FRAME_BITS,
                   pcm_format_to_bits(config->format) * config->channels);
     //通道
     param_set_int(&params, SNDRV_PCM_HW_PARAM_CHANNELS,
                   config->channels);
-    //
+    //buffer对应多少次中断
     param_set_int(&params, SNDRV_PCM_HW_PARAM_PERIODS, config->period_count);
     //采样频率？
     param_set_int(&params, SNDRV_PCM_HW_PARAM_RATE, config->rate);
@@ -919,6 +928,9 @@ struct pcm *pcm_open(unsigned int card, unsigned int device,
     pcm->buffer_size = config->period_count * config->period_size;
 
     if (flags & PCM_MMAP) {
+        /**
+         *
+         */
         pcm->mmap_buffer = mmap(NULL, pcm_frames_to_bytes(pcm, pcm->buffer_size),
                                 PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, pcm->fd, 0);
         if (pcm->mmap_buffer == MAP_FAILED) {
@@ -992,6 +1004,7 @@ struct pcm *pcm_open(unsigned int card, unsigned int device,
 #endif
 
     pcm->underruns = 0;
+    FUNC_END
     return pcm;
 
 fail:

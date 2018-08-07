@@ -7,10 +7,29 @@
 ``
 
 `
- 写入：ioctl(pcm->fd, SNDRV_PCM_IOCTL_WRITEI_FRAMES, &x)
- 读：ioctl(pcm->fd, SNDRV_PCM_IOCTL_READI_FRAMES, &x)
- 参数:ioctl(fd, SNDRV_PCM_IOCTL_HW_REFINE, params)
+- 写入：ioctl(pcm->fd, SNDRV_PCM_IOCTL_WRITEI_FRAMES, &x)
+- 读：ioctl(pcm->fd, SNDRV_PCM_IOCTL_READI_FRAMES, &x)
+- 参数:ioctl(fd, SNDRV_PCM_IOCTL_HW_REFINE, params)
+- 同步指针：ioctl(pcm->fd, SNDRV_PCM_IOCTL_SYNC_PTR, pcm->sync_ptr) 
 `
+
+
+
+---
+SNDRV_PCM_IOCTL_INFO
+SNDRV_PCM_IOCTL_PVERSION
+SNDRV_PCM_IOCTL_TTSTAMP
+SNDRV_PCM_IOCTL_HW_PARAMS//设置硬件参数
+SNDRV_PCM_IOCTL_HW_REFINE
+SNDRV_PCM_IOCTL_SYNC_PTR  //同步指针
+SNDRV_PCM_IOCTL_SW_PARAMS//软件参数
+SNDRV_PCM_IOCTL_PREPARE
+SNDRV_PCM_IOCTL_WRITEI_FRAMES//从用户空间把音频数据拿过来，从wav文件中读出数据，写多帧数据
+SNDRV_PCM_IOCTL_DRAIN
+SNDRV_PCM_IOCTL_DROP
+SNDRV_PCM_IOCTL_HW_FREE
+
+
 
 ### 音频数据中的几个重要概念：
 
@@ -23,9 +42,10 @@
 6.Buffer Size：数据缓冲区大小，这里指 runtime 的 buffer size，而不是结构图 snd_pcm_hardware 中定义的 buffer_bytes_max；一般来说 buffer_size = period_size * period_count， period_count 相当于处理完一个 buffer 数据所需的硬件中断次数。
 
 example:
-单声道
+双声道
 |sample  |rate      |period size   |period count
-|8bit/次 |44100 次/秒|13 帧/次（中断）| 15 次（中断)/个(buffer)
+|16bit/次 |44100 次/秒|1024 帧/次（中断）| 4次（中断)/个(buffer)
 
-44100 bytes/sec
-13 *15 bytes
+    44100 *2*2  bytes/sec 
+----------------------------约=10,相当于一秒内buffer轮转10次
+    1024 *4*2*2 bytes/buffer
