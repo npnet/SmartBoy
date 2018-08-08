@@ -282,6 +282,15 @@ typedef struct SLAndroidSimpleBufferQueueItf_T{
 
 }SLAndroidSimpleBufferQueueItf;
 
+typedef enum RecordStatus_T{
+    Capturing=0,
+}RecordStatus;
+
+typedef enum RecordCtrl_T{
+    Capture=0
+}RecordCtrl;
+
+
 struct AudioRecorderInfo
 {
 
@@ -290,7 +299,9 @@ struct AudioRecorderInfo
     int recordingBufFrames;
     void *writer;
     r_pwrite write;
+
     struct pcm *rpcm;
+    struct pcm_config *config;
 
     //SLObjectItf recorderObject;
     // SLRecordItf recorderRecord;
@@ -298,7 +309,9 @@ struct AudioRecorderInfo
 
 };
 
-struct pcm RecordPcm;
+struct AudioRecorderInfo aRecorderInfo;
+
+//struct pcm RecordPcm;
 void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
 #if 0
@@ -398,28 +411,28 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
     unsigned int device=2;
 
 
-    config.channels = _channel;//通道
-    config.rate = _sampleRateInHz;
-    config.period_size = 1024;//中断一次产生多少帧数据
-    config.period_count = 4;//一个buffer需要多少次中断
-    config.format = _audioFormat;
-    config.start_threshold = 0;
-    config.stop_threshold = 0;
-    config.silence_threshold = 0;
+    aRecorderInfo.config->channels = _channel;//通道
+    aRecorderInfo.config->rate = _sampleRateInHz;
+    aRecorderInfo.config->period_size = 1024;//中断一次产生多少帧数据
+    aRecorderInfo.config->period_count = 4;//一个buffer需要多少次中断
+    aRecorderInfo.config->format = _audioFormat;
+    aRecorderInfo.config->start_threshold = 0;
+    aRecorderInfo.config->stop_threshold = 0;
+    aRecorderInfo.config->silence_threshold = 0;
 
-    pcm = pcm_open(card, device, PCM_IN, &config);
-    if (!pcm || !pcm_is_ready(pcm)) {
+    aRecorderInfo.rpcm = pcm_open(card, device, PCM_IN, &config);
+    if (!aRecorderInfo.rpcm || !pcm_is_ready(aRecorderInfo.rpcm)) {
         fprintf(stderr, "Unable to open PCM device (%s)\n",
-                pcm_get_error(pcm));
+                pcm_get_error(aRecorderInfo.rpcm));
         return 0;
     }
 
-    size = pcm_frames_to_bytes(pcm, pcm_get_buffer_size(pcm));
+    size = pcm_frames_to_bytes(aRecorderInfo.rpcm, pcm_get_buffer_size(aRecorderInfo.rpcm));
     buffer = malloc(size);
     if (!buffer) {
         fprintf(stderr, "Unable to allocate %d bytes\n", size);
         free(buffer);
-        pcm_close(pcm);
+        pcm_close(aRecorderInfo.rpcm);
         return 0;
     }
 
@@ -470,9 +483,21 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
 
     return 0;
 #endif
-   // struct pcm *pcm;
+    struct pcm *pcm;
 
-   // pcm_start(pcm);
+    pcm_start(aRecorderInfo.rpcm);
+    /*
+    while (capturing && !pcm_read(pcm, buffer, size)) {
+
+        if (fwrite(buffer, 1, size, file) != size) {
+            fprintf(stderr,"Error capturing sample\n");
+            break;
+        }
+        bytes_read += size;
+
+    }*/
+
+
     FUNC_END
 
 }

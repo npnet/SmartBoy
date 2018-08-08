@@ -473,13 +473,13 @@ void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
         //初始化录音机
         int r = initRecorder(recognizerSampleRate, 1, 16, _minBufferSize, &recorder);
         if (r != 0) {
-            printf("recorder init error:%d", r);
+            printf("recorder init error:%d\n", r);
             return;
         }
 
         r = startRecord(recorder, recognizer, (r_pwrite) recorderShortWrite);
         if (r != 0) {
-            printf("recorder record error:%d", r);
+            printf("recorder record error:%d\n", r);
             return;
         }
 

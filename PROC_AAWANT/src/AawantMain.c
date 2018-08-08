@@ -63,6 +63,8 @@ void StartAawantServer() {
     int alarm_socket;
     int upgrade_socket;
     int test_socket;
+    int perip_socket;
+    int voice_socket;
 
     char *sMsg = AIcom_GetConfigString((char *) "Config", (char *) "Socket", (char *) CONFIG_FILE);
     if (sMsg == NULL) {
@@ -166,10 +168,19 @@ void StartAawantServer() {
                         if(pHead->iRecordNum== UPGRAGE_PROCESS_IDENTITY){
                             upgrade_socket =iClientSocketList[i];
                         };
+
                         if(pHead->iRecordNum== TEST_PROCESS_IDENTITY){
                             test_socket =iClientSocketList[i];
                         }
 
+
+                        if(pHead->iRecordNum =PERIPHERAL_PROCESS_IDENTITY){
+                            perip_socket =iClientSocketList[i];
+                        };
+
+                        if(pHead->iRecordNum =NETCONFIG_PROCESS_IDENTITY){
+                            voice_socket =iClientSocketList[i];
+                        };
                         break;
                     case PKT_ROBOT_BIND_OK:            // 收到绑定成功的消息
                         // 转发给IOT进程
@@ -350,7 +361,38 @@ void StartAawantServer() {
                             AAWANTSendPacket(upgrade_socket, lpInBuffer);
                         }
                     };
+                        break;
+                    //perip==>主进程
+                    case PKT_BLNS_VALUE_STATUS:{
+                       // PacketHead *head = (PacketHead *) lpInBuffer;
+                       // printf("Get Code=%d\n",head->iRecordNum);
+                        PacketHead *head = (PacketHead *) lpInBuffer;
+                        if (perip_socket > 0) {
+                            printf("PKT_BLNS_VALUE_STATUS:test==>main==>perip\n");
+                            AAWANTSendPacket(perip_socket, lpInBuffer);
+                        }
+                    }
+                        break;
+                    //主进程==>perip
+                    case PKT_BLNS_SYSTEM_STATUS:{
+                        PacketHead *head = (PacketHead *) lpInBuffer;
+                        if (perip_socket > 0) {
+                            printf("PKT_BLNS_SYSTEM_STATUS:test==>main==>perip\n");
+                            AAWANTSendPacket(perip_socket, lpInBuffer);
+                        }
+                    };
+                        break;
 
+                    case PKT_SYSTEM_READY_NETCONFIG:
+                    {
+                        printf("Voice Connect(^-^)\n");
+                    }
+                        break;
+                    case PKT_SYSTEM_WAKEUP:
+                    {
+                        printf("WakeUp(^-^)\n");
+                    }
+                        break;
                 } /* switch */;
                 free(lpInBuffer);
             }; /* if */

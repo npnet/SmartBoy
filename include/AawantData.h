@@ -25,6 +25,7 @@
 #define UPGRAGE_PROCESS_IDENTITY 4  //升级进程
 #define PERIPHERAL_PROCESS_IDENTITY 5  //外围控制进程
 #define NETCONFIG_PROCESS_IDENTITY 6  //网络配置进程
+#define TEST_PROCESS_IDENTITY   7//测试进程
 
 // 各进程用的信号灯键值（要保证各进程用的不同且不与系统中其他进程使用的冲突）
 #define ALARM_SEM_KEY 100 // 闹钟管理的信号灯键值
