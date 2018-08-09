@@ -49,3 +49,15 @@ example:
     44100 *2*2  bytes/sec 
 ----------------------------约=10,相当于一秒内buffer轮转10次
     1024 *4*2*2 bytes/buffer
+
+````
+* 调试命令 arecord -Dhw:0,2 -d 20 -r 16000 -c 1 -t wav -f S16_LE awake.wav
+* card device  
+  [0,1] TDM_Capture ok  
+  [0,2] DMIC_Capture
+  [0,3] AWB_Record  
+  [0,4] BTCVSD_Capture
+  [0,5] BTCVSD_Playback
+  [0,7] DL1_AWB_Record
+  
+  ./rec -D 0 -d 2 -c 2 -r 44100 -b 16 -p 1024 -n 4

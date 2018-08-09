@@ -734,22 +734,25 @@ int  main(int argc, char *argv[])
     stHead.lPacketSize = sizeof(PacketHead);
     AAWANTSendPacket(server_sock, (char *)&stHead);
 
+
+
+    // 初始化本程序中重要的变量
+    timeout_select.tv_sec = 10;
+    timeout_select.tv_usec = 0;
+
     blns_fd=open(LED_DEVICE_PATH,O_RDWR);
     if(blns_fd<0) {
         printf("open blns failed\n");
     } else{
         printf("blns fd=%d\n",blns_fd);
     }
-
-    // 初始化本程序中重要的变量
-    timeout_select.tv_sec = 10;
-    timeout_select.tv_usec = 0;
-
     create_KeyThread();
     Long_Press_Ctrl();
 
     for(;;) {
-
+        if(server_sock==NULL){
+            printf("server_sock is null\n");
+        }
         FD_ZERO(&readmask);
         FD_SET(server_sock,&readmask);
         read_sock = server_sock;
@@ -773,14 +776,15 @@ int  main(int argc, char *argv[])
                 //  WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
                 printf("close sock\n");
                 AIEU_TCPClose(server_sock);
-
+                return -1;
             };
 
             PacketHead *pHead = (PacketHead *) lpInBuffer;
             switch (pHead->iPacketID) {
                     //系统状态灯光
                 case PKT_BLNS_SYSTEM_STATUS: {
-                    printf("Get PKT_BLNS_VALUE_STATUS \n");
+                    printf("Get PKT_BLNS_SYSTEM_STATUS \n");
+
                     System_Blns_Status blns;
                     int cmd;
                     int sw = 0;
@@ -825,9 +829,12 @@ int  main(int argc, char *argv[])
                 }
                     //音量控制灯光
                 case PKT_BLNS_VALUE_STATUS: {
+                    printf("Get PKT_BLNS_VALUE_STATUS \n");
+
                     int led=0;
                     led = (int ) pHead->iRecordNum;
                     write_blns(blns_fd,led);
+
 
                 }
                     break;

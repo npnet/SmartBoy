@@ -5,6 +5,9 @@
 #ifndef SMARTBOY_VOICECONNECTIF_H
 #define SMARTBOY_VOICECONNECTIF_H
 
+
+
+
 typedef unsigned char boolean;
 #if 0
 #include <string>
@@ -47,10 +50,11 @@ int  voice_decoder_VoiceRecognizer_writeBuf(char *_audio, int _dataSize);
 
 
 #if 0
-#define dprintf(...)
+#define Myprintf(...)
 #else
-//#define dprintf(...)    printf("%s",__function__);
+#define Myprintf(format,...)    printf("%s,%d==>"format,__FUNCTION__,__LINE__,##__VA_ARGS__);
+#define qWiFiDebug(format, ...) qDebug("[WiFi] "format" File:%s, Line:%d, Function:%s", ##__VA_ARGS__, __FILE__, __LINE__ , __FUNCTION__);
 #endif
-#define FUNC_START      printf("%s:==>start\n",__FUNCTION__);
-#define FUNC_END        printf("%s:==>end\n",__FUNCTION__);
+#define FUNC_START      printf("============[%s]:Start=============\n",__FUNCTION__);
+#define FUNC_END        printf("============[%s]:End  =============\n",__FUNCTION__);
 #endif //SMARTBOY_VOICECONNECTIF_H

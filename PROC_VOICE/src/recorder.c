@@ -2,6 +2,7 @@
 // Created by sine on 18-8-1.
 //
 #include "audioRecorder.h"
+#if 0
 VOICERECOGNIZEDLL_API int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _bufferSize, void **_precorder){
 
 }
@@ -26,3 +27,4 @@ VOICERECOGNIZEDLL_API int stopRecord(void *_recorder){
 VOICERECOGNIZEDLL_API int releaseRecorder(void *_recorder){
 
 }
+#endif

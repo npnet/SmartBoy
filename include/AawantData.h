@@ -14,7 +14,7 @@
 
 //#define  CONFIG_FILE  (char *)"/data/etc/aawant.conf"
 #define CONFIG_FILE (char *)"/data/etc/aawant.conf"
-#define UPDATE_FILE (char *)"/data/etc/aawant.conf"
+#define UPDATE_FILE (char *)"/data/etc/update.conf"
 #define BUFSIZE 512
 #define ALARM_FIELD_SIZE 80 // 闹钟ID最大长度
 

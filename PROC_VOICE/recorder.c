@@ -7,6 +7,7 @@
 #include "asoundlib.h"
 #include "malloc.h"
 #include "VoiceConnectIf.h"
+#include "alsa/asoundlib.h"
 #if 0
 static SLObjectItf engineObject = NULL;
 static SLEngineItf engineEngine;
@@ -300,8 +301,11 @@ struct AudioRecorderInfo
     void *writer;
     r_pwrite write;
 
+    //by sine
     struct pcm *rpcm;
-    struct pcm_config *config;
+    struct pcm_config config;
+    FILE *file;
+
 
     //SLObjectItf recorderObject;
     // SLRecordItf recorderRecord;
@@ -311,7 +315,10 @@ struct AudioRecorderInfo
 
 struct AudioRecorderInfo aRecorderInfo;
 
-//struct pcm RecordPcm;
+
+static struct pcm RecordPcm;
+
+static struct pcm_config PcmConf;
 void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
 #if 0
@@ -408,33 +415,38 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
     unsigned int bytes_read = 0;
 
     unsigned int card=0;
-    unsigned int device=2;
+    unsigned int device=1;
 
 
-    aRecorderInfo.config->channels = _channel;//通道
-    aRecorderInfo.config->rate = _sampleRateInHz;
-    aRecorderInfo.config->period_size = 1024;//中断一次产生多少帧数据
-    aRecorderInfo.config->period_count = 4;//一个buffer需要多少次中断
-    aRecorderInfo.config->format = _audioFormat;
-    aRecorderInfo.config->start_threshold = 0;
-    aRecorderInfo.config->stop_threshold = 0;
-    aRecorderInfo.config->silence_threshold = 0;
+    aRecorderInfo.config.channels = _channel;//通道
+    aRecorderInfo.config.rate = _sampleRateInHz;
+    aRecorderInfo.config.period_size = 1024;//中断一次产生多少帧数据
+    aRecorderInfo.config.period_count = 4;//一个buffer需要多少次中断
+    aRecorderInfo.config.format = _audioFormat;
+    aRecorderInfo.config.start_threshold = 0;
+    aRecorderInfo.config.stop_threshold = 0;
+    aRecorderInfo.config.silence_threshold = 0;
 
-    aRecorderInfo.rpcm = pcm_open(card, device, PCM_IN, &config);
+    aRecorderInfo.rpcm = pcm_open(card, device, PCM_IN, &aRecorderInfo.config);
     if (!aRecorderInfo.rpcm || !pcm_is_ready(aRecorderInfo.rpcm)) {
         fprintf(stderr, "Unable to open PCM device (%s)\n",
                 pcm_get_error(aRecorderInfo.rpcm));
         return 0;
+    } else{
+        Myprintf("pcm.fd=%d\n",aRecorderInfo.rpcm->fd);
     }
 
-    size = pcm_frames_to_bytes(aRecorderInfo.rpcm, pcm_get_buffer_size(aRecorderInfo.rpcm));
-    buffer = malloc(size);
-    if (!buffer) {
-        fprintf(stderr, "Unable to allocate %d bytes\n", size);
+
+    aRecorderInfo.recordingBufLen = pcm_frames_to_bytes(aRecorderInfo.rpcm, pcm_get_buffer_size(aRecorderInfo.rpcm));
+    aRecorderInfo.recordingBuffer =buffer= malloc(size);
+    if (!aRecorderInfo.recordingBuffer) {
+        printf(stderr, "Unable to allocate %d bytes\n", size);
         free(buffer);
         pcm_close(aRecorderInfo.rpcm);
         return 0;
     }
+
+
 
   //  printf("Capturing sample: %u ch, %u hz, %u bit\n", config.channels, config.rate,
   //         pcm_format_to_bits(config.format));
@@ -484,8 +496,14 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
     return 0;
 #endif
     struct pcm *pcm;
+    int bytes_read=0;
 
     pcm_start(aRecorderInfo.rpcm);
+    aRecorderInfo.file=fopen("/data/t.pcm","w+");
+    if(aRecorderInfo.file==NULL){
+        printf("fopen err\n");
+        goto err;
+    }
     /*
     while (capturing && !pcm_read(pcm, buffer, size)) {
 
@@ -496,7 +514,20 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
         bytes_read += size;
 
     }*/
+    if(aRecorderInfo.rpcm==NULL){
+        goto err;
+    }
 
+    while (!pcm_read(aRecorderInfo.rpcm,aRecorderInfo.recordingBuffer,aRecorderInfo.recordingBufLen)){
+        if (fwrite(aRecorderInfo.recordingBuffer, 1, aRecorderInfo.recordingBufLen, aRecorderInfo.file) != aRecorderInfo.recordingBufLen) {
+            printf("Error capturing sample\n");
+            break;
+        }
+        bytes_read += aRecorderInfo.recordingBufLen;
+    }
+
+    err:
+    return -1;
 
     FUNC_END
 
@@ -556,3 +587,4 @@ int releaseRecorder(void *_recorder)
     return 0;
 }
 
+//====================基于alsa-lib==========================

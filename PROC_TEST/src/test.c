@@ -374,6 +374,26 @@ void test_perip() {
 
 }
 
+void test_single(){
+    PacketHead stPacketHead;
+
+       // sleep(3);
+        memset(&stPacketHead, 0, sizeof(PacketHead));
+        //  PKT_BLNS_SYSTEM_STATUS
+
+        stPacketHead.iPacketID = PKT_BLNS_SYSTEM_STATUS;
+        stPacketHead.lPacketSize = sizeof(PacketHead);
+        stPacketHead.iRecordNum = 401;
+        printf("server_sock=%d\n",server_sock);
+        if (AAWANTSendPacket(server_sock, (char *) &stPacketHead) < 0) {
+            //AIcom_SetErrorMsg(ERROR_SOCKET_WRITE, NULL, NULL);
+            printf("Send packet err\n");
+            // return -1;
+        };
+
+
+}
+
 #if 0
 void test_led(){
     LED_CTL ledCtl;
@@ -481,6 +501,7 @@ int main(int argc, char *argv[]) {
     if (argc >= 2 && strcasecmp(argv[1], "cli") == 0) {
         //test_systemtask();
         test_perip();
+        //test_single();
     }
 
 #if 0

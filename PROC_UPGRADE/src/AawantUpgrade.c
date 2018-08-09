@@ -877,6 +877,7 @@ int main(int argc, char *argv[]) {
                 //  WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
                 printf("close sock\n");
                 AIEU_TCPClose(server_sock);
+                return -1;
 
             };
             PacketHead *pHead = (PacketHead *) lpInBuffer;

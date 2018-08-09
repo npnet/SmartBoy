@@ -48,3 +48,7 @@ INCLUDE_DIRECTORIES(include)
 ADD_EXECUTABLE(voicon  VoiceConnectService.c pcm.c recorder.c)
 TARGET_LINK_LIBRARIES(voicon aawant voiceRecog pthread m)
 
+
+ADD_EXECUTABLE(rec test/AudioQueue.c test/record.c test/cae_thread.c)
+TARGET_LINK_LIBRARIES(rec asound pthread)
+

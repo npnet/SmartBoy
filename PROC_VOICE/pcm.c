@@ -242,26 +242,6 @@ static void param_init(struct snd_pcm_hw_params *p)
     p->info = ~0U;
 }
 
-#define PCM_ERROR_MAX 128
-
-struct pcm {
-    int fd;
-    unsigned int flags;
-    int running:1;
-    int prepared:1;
-    int underruns;
-    unsigned int buffer_size;
-    unsigned int boundary;
-    char error[PCM_ERROR_MAX];
-    struct pcm_config config;
-    struct snd_pcm_mmap_status *mmap_status;
-    struct snd_pcm_mmap_control *mmap_control;
-    struct snd_pcm_sync_ptr *sync_ptr;
-    void *mmap_buffer;
-    unsigned int noirq_frames_per_msec;
-    int wait_for_avail_min;
-};
-
 
 unsigned int pcm_get_buffer_size(struct pcm *pcm)
 {
@@ -531,9 +511,18 @@ int pcm_write(struct pcm *pcm, const void *data, unsigned int count)
     }
 }
 
-int pcm_read(struct pcm *pcm, void *data, unsigned int count)
+int pcm_read(struct pcm *xpcm, void *data, unsigned int count)
 {
     struct snd_xferi x;
+    struct pcm *pcm=xpcm;
+
+    FUNC_START
+    if(pcm==NULL){
+        Myprintf("pcm is null\n");
+    } else
+    {
+        Myprintf("pcm.fd=%d\n",pcm->fd);
+    }
 
     if (!(pcm->flags & PCM_IN))
         return -EINVAL;
@@ -541,11 +530,13 @@ int pcm_read(struct pcm *pcm, void *data, unsigned int count)
 
     x.frames = count / (pcm->config.channels *
                         pcm_format_to_bits(pcm->config.format) / 8);
+    Myprintf("x.frame=%d\n",x.frames);
 
     for (;;) {
         if (!pcm->running) {
             if (pcm_start(pcm) < 0) {
-                fprintf(stderr, "start error");
+                //fprintf(stderr, "start error");
+                Myprintf("start error\n");
                 return -errno;
             }
         }
@@ -557,10 +548,12 @@ int pcm_read(struct pcm *pcm, void *data, unsigned int count)
                 pcm->underruns++;
                 continue;
             }
+            Myprintf("ioctl err\n");
             return oops(pcm, errno, "cannot read stream data");
         }
         return 0;
     }
+    FUNC_END
 }
 
 static struct pcm bad_pcm = {
@@ -867,8 +860,10 @@ struct pcm *pcm_open(unsigned int card, unsigned int device,
     snprintf(fn, sizeof(fn), "/dev/snd/pcmC%uD%u%c", card, device,
              flags & PCM_IN ? 'c' : 'p');
 
+    Myprintf("%s\n",fn);
     pcm->flags = flags;
     pcm->fd = open(fn, O_RDWR);
+    Myprintf("pcm.fd=%d\n",pcm->fd);
     if (pcm->fd < 0) {
         oops(pcm, errno, "cannot open device '%s'", fn);
         return pcm;

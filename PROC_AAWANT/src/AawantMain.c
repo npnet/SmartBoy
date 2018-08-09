@@ -161,25 +161,31 @@ void StartAawantServer() {
                     case PKT_CLIENT_IDENTITY:   // 各进程发给主控进程，标识身份，包头中iRecordNum存放各进程标识值
                         if (pHead->iRecordNum == IOT_PROCESS_IDENTITY) {
                             iot_socket = iClientSocketList[i];
+                            printf("MainProcess:iot_socket=%d\n",iot_socket);
                         };
                         if (pHead->iRecordNum == ALARM_PROCESS_IDENTITY) {
                             alarm_socket = iClientSocketList[i];
+                            printf("MainProcess:alarm_socket=%d\n",alarm_socket);
                         };
                         if(pHead->iRecordNum== UPGRAGE_PROCESS_IDENTITY){
                             upgrade_socket =iClientSocketList[i];
+                            printf("MainProcess:upgrade_socket=%d\n",upgrade_socket);
                         };
 
                         if(pHead->iRecordNum== TEST_PROCESS_IDENTITY){
                             test_socket =iClientSocketList[i];
+                            printf("MainProcess:test_socket=%d\n",test_socket);
                         }
 
 
-                        if(pHead->iRecordNum =PERIPHERAL_PROCESS_IDENTITY){
+                        if(pHead->iRecordNum ==PERIPHERAL_PROCESS_IDENTITY){
                             perip_socket =iClientSocketList[i];
+                            printf("MainProcess:perip_socket=%d\n",perip_socket);
                         };
 
-                        if(pHead->iRecordNum =NETCONFIG_PROCESS_IDENTITY){
+                        if(pHead->iRecordNum ==NETCONFIG_PROCESS_IDENTITY){
                             voice_socket =iClientSocketList[i];
+                            printf("MainProcess:voice_socket=%d\n",voice_socket);
                         };
                         break;
                     case PKT_ROBOT_BIND_OK:            // 收到绑定成功的消息
@@ -368,8 +374,9 @@ void StartAawantServer() {
                        // printf("Get Code=%d\n",head->iRecordNum);
                         PacketHead *head = (PacketHead *) lpInBuffer;
                         if (perip_socket > 0) {
-                            printf("PKT_BLNS_VALUE_STATUS:test==>main==>perip\n");
+                            printf("PKT_BLNS_VALUE_STATUS:test==>main==>perip:%d\n",head->iRecordNum);
                             AAWANTSendPacket(perip_socket, lpInBuffer);
+                            //AAWANTSendPacketHead(perip_socket,head->iRecordNum);
                         }
                     }
                         break;
@@ -377,8 +384,10 @@ void StartAawantServer() {
                     case PKT_BLNS_SYSTEM_STATUS:{
                         PacketHead *head = (PacketHead *) lpInBuffer;
                         if (perip_socket > 0) {
-                            printf("PKT_BLNS_SYSTEM_STATUS:test==>main==>perip\n");
+
+                            printf("PKT_BLNS_SYSTEM_STATUS:test==>main==>perip:%d\n",head->iRecordNum);
                             AAWANTSendPacket(perip_socket, lpInBuffer);
+                            //AAWANTSendPacketHead(perip_socket,head->iRecordNum);
                         }
                     };
                         break;

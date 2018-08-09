@@ -259,6 +259,18 @@ int WriteUpgradeFile(UpgradeReport *newReport){
 
 
 }
+
+
+int CheckUpgradeResult() {
+    char *sMsg = AIcom_GetConfigString((char *) "Update", (char *) "LastVersion",(char *) UPDATE_FILE);
+    if (sMsg == NULL) {
+        printf("Fail to get Update in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(sService, sMsg);
+    return 0;
+
+}
 int main() {
 #define myurl "http://192.168.1.118/update.bin"
     int a = 4;
