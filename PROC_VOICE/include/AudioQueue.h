@@ -11,15 +11,16 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include "a_thread.h"
 
 #define NATIVE_MUTEX_HANDLE pthread_mutex_t *
-
+/*
 typedef struct _NATIVE_EVENT{
     pthread_mutex_t	mutex;
     pthread_cond_t	signal;
     int set;
 }NATIVE_EVENT, *NATIVE_EVENT_HANDLE;
-
+*/
 
 /**
  * 队列数据结构：|***控制块***|***数据区***|
