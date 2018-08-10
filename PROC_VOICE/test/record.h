@@ -35,6 +35,16 @@ struct pcm_config {
 };
 
 
+#if 0
+#define FUNC_START
+#define FUNC_END
+#define LOG(format,...);
+
+#else
+#define FUNC_START printf("========[%s]:START========\n",__FUNCTION__);
+#define FUNC_END   printf("========[%s]:END========\n",__FUNCTION__);
+#define LOG(format,...) printf("%s,%d:"format,__FUNCTION__,__LINE__,##__VA_ARGS__);
+#endif
 
 
 #ifdef __cplusplus

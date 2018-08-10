@@ -3,11 +3,13 @@
 //
 #include <stdio.h>
 #include <PROC_VOICE/include/audioRecorder.h>
+
 #include "tinycthread.h"
-#include "asoundlib.h"
+
 #include "malloc.h"
 #include "VoiceConnectIf.h"
 #include "alsa/asoundlib.h"
+#include "AudioQueue.h"
 #if 0
 static SLObjectItf engineObject = NULL;
 static SLEngineItf engineEngine;
@@ -215,111 +217,32 @@ struct wav_header {
     uint32_t data_sz;
 };
 #endif
-struct recorder{
-    int fd;
-    int channels;   //通道
-    int sampleRate; //采样率
-    int frames;
-    int bits;       //多少位
-    int period_size;//
-    int period_count;//
-};
+struct pcm_config conf;
+#define AUDIO_QUEUE_BUFF_LEN  (1024*10)
 
-/*
-unsigned int capture_sample(FILE *file, unsigned int card, unsigned int device,
-                            unsigned int channels, unsigned int rate,
-                            enum pcm_format format, unsigned int period_size,
-                            unsigned int period_count)
-{
-    struct pcm_config config;
-    struct pcm *pcm;
+#define QUEUE_BUFF_MULTIPLE 1000
+
+
+typedef void (*record_audio_fn)(void *buf,int len,int err_code);
+
+typedef struct _RecordData {
+    snd_pcm_t *handle;
+    snd_pcm_hw_params_t *params;
+    audio_queue_t *queue;
+    char *queue_buff;
     char *buffer;
-    unsigned int size;
-    unsigned int bytes_read = 0;
-
-    config.channels = channels;
-    config.rate = rate;
-    config.period_size = period_size;
-    config.period_count = period_count;
-    config.format = format;
-    config.start_threshold = 0;
-    config.stop_threshold = 0;
-    config.silence_threshold = 0;
-
-    pcm = pcm_open(card, device, PCM_IN, &config);
-    if (!pcm || !pcm_is_ready(pcm)) {
-        fprintf(stderr, "Unable to open PCM device (%s)\n",
-                pcm_get_error(pcm));
-        return 0;
-    }
-
-    size = pcm_frames_to_bytes(pcm, pcm_get_buffer_size(pcm));
-    buffer = malloc(size);
-    if (!buffer) {
-        fprintf(stderr, "Unable to allocate %d bytes\n", size);
-        free(buffer);
-        pcm_close(pcm);
-        return 0;
-    }
-
-    printf("Capturing sample: %u ch, %u hz, %u bit\n", channels, rate,
-           pcm_format_to_bits(format));
-
-    while (capturing && !pcm_read(pcm, buffer, size)) {
-        if (fwrite(buffer, 1, size, file) != size) {
-            fprintf(stderr,"Error capturing sample\n");
-            break;
-        }
-        bytes_read += size;
-    }
-
-    free(buffer);
-    pcm_close(pcm);
-    return pcm_bytes_to_frames(pcm, bytes_read);
-}
-*/
-
-typedef struct SLAndroidSimpleBufferQueueItf_T{
-
-}SLAndroidSimpleBufferQueueItf;
-
-typedef enum RecordStatus_T{
-    Capturing=0,
-}RecordStatus;
-
-typedef enum RecordCtrl_T{
-    Capture=0
-}RecordCtrl;
+    int buff_size;
+    snd_pcm_uframes_t frames;
+    record_audio_fn cb;
+    void *user_data;
+    pthread_t tid_pcm_read;
+    pthread_t tid_queue_read;
+    int runing;
+} RecordData;
 
 
-struct AudioRecorderInfo
-{
 
-    char *recordingBuffer;
-    int recordingBufLen;
-    int recordingBufFrames;
-    void *writer;
-    r_pwrite write;
-
-    //by sine
-    struct pcm *rpcm;
-    struct pcm_config config;
-    FILE *file;
-
-
-    //SLObjectItf recorderObject;
-    // SLRecordItf recorderRecord;
-    // SLAndroidSimpleBufferQueueItf recorderBufferQueue;
-
-};
-
-struct AudioRecorderInfo aRecorderInfo;
-
-
-static struct pcm RecordPcm;
-
-static struct pcm_config PcmConf;
-void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+void recorderCallback(void *data, int len,int code)
 {
 #if 0
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)context;
@@ -342,7 +265,9 @@ void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 #endif
 }
 
-int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _bufferSize, void **_precorder)
+
+
+int initRecorder(int sampleRateInHz, int channel, int audioFormat, int bufferSize, void **_precorder)
 {
     FUNC_START
 #if 0
@@ -408,50 +333,105 @@ int initRecorder(int _sampleRateInHz, int _channel, int _audioFormat, int _buffe
     return 0;
 #endif
 
-    struct pcm_config config;
-    struct pcm *pcm;
-    char *buffer;
-    unsigned int size;
-    unsigned int bytes_read = 0;
+    char sound_device_name[256];
+    int card=0;
+    int device=1;
+    memset(&conf,0,sizeof(conf));
+    snprintf(sound_device_name, sizeof(sound_device_name), "hw:%u,%u", card, device);
+    conf.rate=sampleRateInHz;
+    conf.channels=channel;
+    conf.device_name=sound_device_name;
+    conf.period_count=4;
+    conf.period_size=1024;
 
-    unsigned int card=0;
-    unsigned int device=1;
-
-
-    aRecorderInfo.config.channels = _channel;//通道
-    aRecorderInfo.config.rate = _sampleRateInHz;
-    aRecorderInfo.config.period_size = 1024;//中断一次产生多少帧数据
-    aRecorderInfo.config.period_count = 4;//一个buffer需要多少次中断
-    aRecorderInfo.config.format = _audioFormat;
-    aRecorderInfo.config.start_threshold = 0;
-    aRecorderInfo.config.stop_threshold = 0;
-    aRecorderInfo.config.silence_threshold = 0;
-
-    aRecorderInfo.rpcm = pcm_open(card, device, PCM_IN, &aRecorderInfo.config);
-    if (!aRecorderInfo.rpcm || !pcm_is_ready(aRecorderInfo.rpcm)) {
-        fprintf(stderr, "Unable to open PCM device (%s)\n",
-                pcm_get_error(aRecorderInfo.rpcm));
-        return 0;
-    } else{
-        Myprintf("pcm.fd=%d\n",aRecorderInfo.rpcm->fd);
-    }
-
-
-    aRecorderInfo.recordingBufLen = pcm_frames_to_bytes(aRecorderInfo.rpcm, pcm_get_buffer_size(aRecorderInfo.rpcm));
-    aRecorderInfo.recordingBuffer =buffer= malloc(size);
-    if (!aRecorderInfo.recordingBuffer) {
-        printf(stderr, "Unable to allocate %d bytes\n", size);
-        free(buffer);
-        pcm_close(aRecorderInfo.rpcm);
-        return 0;
-    }
-
-
-
-  //  printf("Capturing sample: %u ch, %u hz, %u bit\n", config.channels, config.rate,
-  //         pcm_format_to_bits(config.format));
     FUNC_END
     return 0;
+}
+
+static void *QueueReadThread(void *param) {
+    RecordData *record = (RecordData *) param;
+    FUNC_START
+    int readLen = 0;
+    printf("QueueReadThread record :%x\n", record);
+    while (record->runing) {
+        char *data_buff = NULL;
+        readLen = queue_read(record->queue, &data_buff);
+
+        if (readLen<=0) {
+            //printf("queue_read readLen = 0\n");
+            usleep(16000);
+            continue;
+        }
+        /*
+        if (record->buff_size != readLen) {
+            //printf("\nqueue_read readLen %d\n", readLen);
+        }
+         */
+
+        //回调
+        record->cb(data_buff, readLen, 0);
+        free(data_buff);
+    }
+    printf("QueueReadThread end \n");
+    FUNC_END
+    return NULL;
+}
+
+
+static void *RecordThread(void *param) {
+    RecordData *record = (RecordData *) param;
+    int ret = 0;
+    int i=0,j=0;
+    cpu_set_t mask;
+    FUNC_START
+    printf("RecordThread record:%x\n", record);
+    // CPU_ZERO(&mask);
+    // CPU_SET(0,&mask);
+    // ret = sched_setaffinity(0, sizeof(mask), &mask);
+    char *new_buffer=(char *)malloc(record->buff_size*2);
+
+    //LOG("sched_setaffinity return = %d\n", ret);
+    while (record->runing) {
+        ret = snd_pcm_readi(record->handle, record->buffer, record->frames);
+        //printf("snd_pcm_readi return = %d\n", ret);
+        if (ret == -EPIPE) {
+            /* EPIPE means overrun */
+            LOG("overrun occurred\n");
+            snd_pcm_prepare(record->handle);
+            continue;
+        } else if (ret < 0) {
+            LOG("error from read: %s\n",snd_strerror(ret));
+            record->cb(NULL, 0, ret);
+            continue;
+        } else if (ret != (int) record->frames) {
+            LOG("short read, read %d frames\n", ret);
+            continue;
+        }
+//=========
+        //增加通道号
+        for(i=0;i<record->buff_size;i+=2){
+            new_buffer[2*i + 0] = 0;
+            new_buffer[2*i + 1] = j++%8 + 1;
+            new_buffer[2*i + 2] = (record->buffer)[i];
+            new_buffer[2*i + 3] = (record->buffer)[i+1];
+        }
+        //fwrite(new_buffer, record->buff_size*2, 1, fp);
+        if(queue_write(record->queue, new_buffer, record->buff_size * 2) < 0){
+            LOG("RecordThread write error\n");
+            usleep(30*1000);
+            queue_write(record->queue, new_buffer, record->buff_size * 2);
+        }
+//==========
+        // queue_write(record->queue, record->buffer, record->buff_size);
+    }
+    if(new_buffer != NULL){
+        free(new_buffer);
+        new_buffer = NULL;
+    }
+
+    printf("RecordThread end\n");
+    FUNC_END
+    return NULL;
 }
 
 int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
@@ -495,39 +475,124 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
 
     return 0;
 #endif
-    struct pcm *pcm;
-    int bytes_read=0;
+    int rc;
+    int ret;
+    int val;
+    int dir;
+    int size;
+    pthread_attr_t thread_attr;
+    struct sched_param thread_param;
+    snd_pcm_hw_params_t *params;
 
-    pcm_start(aRecorderInfo.rpcm);
-    aRecorderInfo.file=fopen("/data/t.pcm","w+");
-    if(aRecorderInfo.file==NULL){
-        printf("fopen err\n");
-        goto err;
+    snd_pcm_uframes_t frames;
+    char *buffer;
+    RecordData *record = NULL;
+    void *audio_queue_buff = NULL;
+
+    record = (RecordData *) malloc(sizeof(RecordData));
+    audio_queue_buff = malloc(sizeof(audio_queue_t) + AUDIO_QUEUE_BUFF_LEN + 1);
+    if (NULL == record) {
+        return -1;
     }
-    /*
-    while (capturing && !pcm_read(pcm, buffer, size)) {
+    memset(record, 0, sizeof(RecordData));
+    //回调函数
+    record->cb = recorderCallback;
 
-        if (fwrite(buffer, 1, size, file) != size) {
-            fprintf(stderr,"Error capturing sample\n");
-            break;
-        }
-        bytes_read += size;
-
-    }*/
-    if(aRecorderInfo.rpcm==NULL){
-        goto err;
+    //设置录音参数参数
+    rc = snd_pcm_open(&record->handle, conf.device_name, SND_PCM_STREAM_CAPTURE, 0);
+    if (rc < 0) {
+        LOG("unable to open pcm device: %s/n", snd_strerror(rc));
+        ret = -1;
+        goto error;
     }
 
-    while (!pcm_read(aRecorderInfo.rpcm,aRecorderInfo.recordingBuffer,aRecorderInfo.recordingBufLen)){
-        if (fwrite(aRecorderInfo.recordingBuffer, 1, aRecorderInfo.recordingBufLen, aRecorderInfo.file) != aRecorderInfo.recordingBufLen) {
-            printf("Error capturing sample\n");
-            break;
-        }
-        bytes_read += aRecorderInfo.recordingBufLen;
+    snd_pcm_hw_params_alloca(&params);
+
+    /* Fill it in with default values. */
+    snd_pcm_hw_params_any(record->handle, params);
+
+    /* 设置参数 */
+    /* Interleaved mode */
+    snd_pcm_hw_params_set_access(record->handle, params,
+                                 SND_PCM_ACCESS_RW_INTERLEAVED);
+
+    //设置音频采集格式
+    snd_pcm_hw_params_set_format(record->handle, params,
+                                 SND_PCM_FORMAT_S16_LE);
+
+    //设置通道
+    snd_pcm_hw_params_set_channels(record->handle, params, conf.channels);
+
+    //采样率
+    val = conf.rate;
+    snd_pcm_hw_params_set_rate_near(record->handle, params, &val, &dir);
+
+    //设置每次中断，产生多少帧数据
+    frames = conf.period_size;
+    snd_pcm_hw_params_set_period_size_near(record->handle, params, &frames, &dir);
+    record->frames = frames;
+
+    /* 把参数写进驱动 */
+    rc = snd_pcm_hw_params(record->handle, params);
+    if (rc < 0) {
+        LOG("unable to set hw parameters: %s\n",snd_strerror(rc));
+        return -1;
     }
 
-    err:
-    return -1;
+    /* Use a buffer large enough to hold one period */
+    snd_pcm_hw_params_get_period_size(params, &frames, &dir);
+
+    //分配录音缓冲大小
+    size = frames * 8;
+    record->buff_size = size;
+    LOG("frames=%d,record->buff_size=%d\n", frames, record->buff_size);
+    record->buffer = (char *) malloc(size);
+    if (NULL == record->buffer) {
+        ret = -1;
+        goto error;
+    }
+
+    //？
+    record->queue_buff = (char *) malloc(sizeof(audio_queue_t) + size * QUEUE_BUFF_MULTIPLE + 1);
+    if (NULL == record->queue_buff) {
+        ret = -1;
+        goto error;
+    }
+
+    //初始化缓冲队列
+    record->queue = queue_init(record->queue_buff, size * QUEUE_BUFF_MULTIPLE + 1);
+    pthread_attr_init(&thread_attr);
+    pthread_attr_setschedpolicy(&thread_attr, SCHED_RR);
+    thread_param.sched_priority = sched_get_priority_max(SCHED_RR);
+    pthread_attr_setschedparam(&thread_attr, &thread_param);
+    record->runing = 1;
+
+    //创建录音线程和队列线程
+    LOG("record_start record :%x\n", record);
+    ret=pthread_create(&record->tid_pcm_read, &thread_attr, RecordThread, (void *) record);
+    if(0!=ret){
+        LOG("Create RecordThread err\n");
+        goto error;
+    }
+    ret=pthread_create(&record->tid_queue_read, NULL, QueueReadThread, (void *) record);
+    if(0!=ret){
+        LOG("Create RecordThread err\n");
+        goto error;
+    }
+
+    goto exit;
+
+error:
+    printf("record start error %d\n", ret);
+    stopRecord(record);
+
+exit:
+    printf("record start out %d\n", ret);
+    free(audio_queue_buff);
+
+    return ret;
+
+
 
     FUNC_END
 
@@ -558,9 +623,7 @@ int stopRecord(void *_recorder)
     return 0;
 #endif
 
-    //struct pcm *pcm;
 
-    //pcm_stop(pcm);
     FUNC_END
 }
 

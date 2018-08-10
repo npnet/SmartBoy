@@ -17,10 +17,19 @@
 #include "AIUComm.h"
 #include "cJSON.h"
 #include <upg_control.h>
-//#include <c++/5/string>
+
 #include "upg_download.h"
 #include "HttpClient.h"
 #include "systool.h"
+
+#if 0
+#define FUNC_START
+#define FUNC_END
+#else
+#define FUNC_START printf("========[%s]:START========\n",__FUNCTION__);
+#define FUNC_END   printf("========[%s]:END========\n",__FUNCTION__);
+#endif
+
 
 #define REPORT_DOWNLOAD_PATH  "www.aawant.com/speaker/0.0.1/release/equipment/afterDownload"
 #define REPORT_UPGRADE_PATH "www.aawant.com/speaker/0.0.1/release/EquipmentUpdateReportWebServlet"
@@ -87,7 +96,42 @@ UPG_STAGE GetUpgStage(){
     return upgStage;
 }
 
-int WriteUpgradeFile(UpgradeReport *newReport){
+int WriteUpgradeReportToFile(UpgradeReport *np,char *path){
+    int fd;
+    char buf[512];
+    int len=-1;
+    char ver[10];
+
+    char *currentMsg = AIcom_GetConfigString((char *) "Config", (char *) "Version",(char *) CONFIG_FILE);
+    if (currentMsg == NULL) {
+        printf("Fail to get Version info: %s!\n", CONFIG_FILE);
+        return (AI_NG);
+    };
+
+    strcpy(ver,currentMsg);
+    printf("Current Version %s\n",ver);
+
+    fd=open(path,O_CREAT|O_TRUNC|O_RDWR);
+    if(-1==fd){
+        printf("Cannot open update.conf\n");
+        return -1;
+    }
+
+    snprintf(buf,512,"[UPDATE]\nVersion=%s\nmac=%s\ntime=%d\ninfo=%s\ntype=%d\ntoVersion=%d\nnowVersion=%d\n"
+                     "model=%s\nupdateUrl=%s\nid=%s\nids=%d\n",ver,np->mac,np->time_t,np->info,np->type,
+             np->toVersion,np->nowVersion,np->model,np->updateUrl,np->id,np->ids);
+    len=strlen(buf);
+    printf("buf len = %d\n",len);
+    printf("buf =%s\n",buf);
+
+    if(write(fd,buf,len)!=len){
+        printf("Cannot open update.conf\n");
+        close(fd);
+        return -1;
+    }
+
+    close(fd);
+    return 0;
 
 }
 
@@ -217,17 +261,145 @@ int CGet(const char *url, char * Response)
  * 检查上次运行是否有升级及升级结果
  * @return 0:没有升级 1：有升级
  */
+
 int CheckUpgradeResult() {
-    char *sMsg = AIcom_GetConfigString((char *) "Update", (char *) "LastVersion",(char *) UPDATE_FILE);
-    if (sMsg == NULL) {
-        printf("Fail to get Update in %s!\n", UPDATE_FILE);
+
+    UpgradeReport report;
+    char oldver[10];
+    char nowver[10];
+    int old;
+    int now;
+    int fd;
+    FUNC_START
+    char *oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "Version",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+
+    snprintf(oldver,10,oldMsg);
+    old=atoi(oldver);
+    printf("oldver = %d\n",old);
+
+    char *nowMsg = AIcom_GetConfigString((char *) "Config", (char *) "Version",(char *) CONFIG_FILE);
+    if (nowMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", CONFIG_FILE);
         return (AI_NG);
     };
     //strcpy(sService, sMsg);
-    return 0;
+    //strcpy(nowver,oldMsg);
+    snprintf(nowver,10,oldMsg);
+    now=atoi(nowver);
+    printf("nowver = %d\n",now);
+    if(now>old){
+        printf("System upgrade finish\n");
+        return 1;
+    }
 
+    FUNC_END
+    return 0;
 }
 
+int GetUpgradeInfo(){
+    FUNC_START
+
+    char *oldMsg=NULL ;
+
+    oldMsg= AIcom_GetConfigString((char *) "UPDATE", (char *) "mac",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.mac,oldMsg);
+
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "time",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+   // strcpy(oldUpgReport.mac,oldMsg);
+    oldUpgReport.time_t=atoi(oldMsg);
+
+    /*
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "info",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+     */
+    strcpy(oldUpgReport.info,"");
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "type",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.type,oldMsg);
+    oldUpgReport.type=atoi(oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "toVersion",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.toVersion,oldMsg);
+    oldUpgReport.toVersion=atoi(oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "nowVersion",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.mac,oldMsg);
+    oldUpgReport.nowVersion=atoi(oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "model",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.model,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "updateUrl",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.updateUrl,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "id",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.id,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "ids",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.ids,oldMsg);
+    oldUpgReport.ids=atoi(oldMsg);
+
+
+
+    printf("mac=%s\n",oldUpgReport.mac);
+    printf("time=%ld\n",oldUpgReport.time_t);
+    printf("info=%s\n",oldUpgReport.info);
+    printf("type=%d\n",oldUpgReport.type);
+    printf("ids=%d\n",oldUpgReport.ids);
+    printf("model=%s\n",oldUpgReport.model);
+    printf("id=%s\n",oldUpgReport.id);
+    printf("nowVersion=%d\n",oldUpgReport.nowVersion);
+    printf("toVersion=%d\n",oldUpgReport.toVersion);
+    printf("updateUrl=%s\n",oldUpgReport.updateUrl);
+
+
+    FUNC_END
+
+}
 
 /**
  * 上报下载结果
@@ -239,6 +411,7 @@ void ReportDownloadResult(){
     char *data="?mac=";
     char strResponse[256];
     char mac[17];
+    FUNC_START
     memset(strUrl,0,sizeof(strUrl));
     strcpy(strUrl,A_REPORT_DOWNLOAD_PATH);
     strcat(strUrl,data);
@@ -247,6 +420,7 @@ void ReportDownloadResult(){
     strcat(strUrl,mac);
     printf("url==>%s\n",strUrl);
     CGet(strUrl,NULL);
+    FUNC_END
 }
 
 /**
@@ -261,7 +435,7 @@ void ReportUpgradeResult(UpgradeReport *rp){
     char json[4096];
     char data[4096];
     // char Mac[20];
-
+    FUNC_START
     cJSON *root=cJSON_CreateObject();
 
     cJSON_AddItemToObject(root, "mac", cJSON_CreateString(rp->mac));
@@ -276,6 +450,7 @@ void ReportUpgradeResult(UpgradeReport *rp){
     cJSON_AddItemToObject(root,"ids",cJSON_CreateNumber(rp->ids));
 
     printf("%s\n", cJSON_PrintUnformatted(root));
+
     /*
     memset(data,0,sizeof(data));
     strcpy(data,A_REPORT_UPGRADE_PATH);
@@ -285,6 +460,7 @@ void ReportUpgradeResult(UpgradeReport *rp){
     */
 
     CPost(rp->updateUrl,cJSON_PrintUnformatted(root),NULL);
+    FUNC_END
 }
 
 
@@ -354,13 +530,16 @@ void *Do_Download2(void *arg) {
         stpcpy(dl_param.save_path, UPGRADE_FULL_PKG_SAVE_PATH);
         strcat(dl_param.save_path, UPGRADE_FULL_PKG_NAME);
 
+
         rs=FlashImgData(&dl_param);
         //下载失败，把失败原因写进/data/aawant.conf
         newUpgReport.time_t=GetCurrentTime();
         //1升级成功、2校验失败、3、升级失败
         newUpgReport.type=rs;
+        GetMac(newUpgReport.mac,"wlan0");
 
-        WriteUpgradeFile(&newUpgReport);
+
+        WriteUpgradeReportToFile(&newUpgReport,"/data/etc/update.conf");
         SetUpgStage(UPG_STAGE_END);
         //system("reboot");
 #endif
@@ -836,6 +1015,7 @@ int main(int argc, char *argv[]) {
     rs=CheckUpgradeResult();
     if(rs) {
         //把升级结果赋值给type
+        /*
         oldUpgReport.type = rs;
 
         GetMac(oldUpgReport.mac, "wlan0");
@@ -848,6 +1028,8 @@ int main(int argc, char *argv[]) {
         strcpy(oldUpgReport.updateUrl, REPORT_UPGRADE_PATH);
         oldUpgReport.nowVersion = 0;
         oldUpgReport.toVersion = 1;
+         */
+        GetUpgradeInfo();
         ReportUpgradeResult(&oldUpgReport);
     }
     //设置升级的阶段

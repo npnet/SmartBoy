@@ -249,7 +249,7 @@ void test_systemtask() {
 }
 
 
-void test_perip() {
+void test_all() {
     char buf[256];
     char buf1[3][50];
     char buf2[50];
@@ -362,8 +362,16 @@ void test_perip() {
                         // return -1;
                     };
                 }
+            } else if(strcmp(word, "upgrade")==0){
+                struct UpdateInfoMsg_Iot_Data updata;
 
-
+                strcpy(updata.updateUrl, "http://192.168.1.118/update.zip");
+                strcpy(updata.id, "1");
+                strcpy(updata.model, "mt8516");
+                updata.nowVersion = 2;
+                updata.toVersion = 4;
+                AAWANTSendPacket(server_sock, PKT_VERSION_UPDATE, (char *) &updata,
+                                 sizeof(struct UpdateInfoMsg_Iot_Data));
 
             }
         }
@@ -500,7 +508,7 @@ int main(int argc, char *argv[]) {
     //发送升级命令给主程序
     if (argc >= 2 && strcasecmp(argv[1], "cli") == 0) {
         //test_systemtask();
-        test_perip();
+        test_all();
         //test_single();
     }
 

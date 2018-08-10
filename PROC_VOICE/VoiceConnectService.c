@@ -150,7 +150,7 @@ int  main(int argc, char *argv[])
     int baseFreq = 16000;
 
     int channelConfig=2;
-    int audioFormat=PCM_FORMAT_S16_LE;
+//    int audioFormat=PCM_FORMAT_S16_LE;
     int bufferSizeInBytes=sampleRate*channelConfig*2;
 
     void *recorder=NULL;
@@ -170,8 +170,8 @@ int  main(int argc, char *argv[])
 
     //
 
-    initRecorder(sampleRate,channelConfig,audioFormat,bufferSizeInBytes,NULL);
-    startRecord(recorder,writer,pwrite);
+//    initRecorder(sampleRate,channelConfig,audioFormat,bufferSizeInBytes,NULL);
+//    startRecord(recorder,writer,pwrite);
    // voice_decoder_VoiceRecognizer_init(sampleRate);
    // voice_decoder_VoiceRecognizer_setFreqs(freqs,length);
    // voice_decoder_VoiceRecognizer_start(bufferSizeInBytes);

@@ -4,7 +4,10 @@
 #include <../include/common.h>
 #include <../include/upg_download.h>
 #include <fcntl.h>
+#include <include/AI_PKTHEAD.h>
 #include "HttpClient.h"
+#include "AIprofile.h"
+#include "AawantData.h"
 //#include "string"
 #include "string.h"
 #include "systool.h"
@@ -34,6 +37,7 @@ long GetCurrentTime(){
 }
 
 typedef struct UpgradeReport_T{
+
     char mac[20];
     long time_t;
     char info[2];
@@ -48,6 +52,8 @@ typedef struct UpgradeReport_T{
 }UpgradeReport;
 
 UpgradeReport upgReport;
+UpgradeReport oldUpgReport;
+UpgradeReport newUpgReport;
 
 
 
@@ -203,7 +209,97 @@ void ReportUpgradeResult(UpgradeReport *rp){
 
 }
 
+int GetUpgradeInfo(){
 
+    char *oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "mac",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.mac,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "time",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    // strcpy(oldUpgReport.mac,oldMsg);
+    oldUpgReport.time_t=atoi(oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "info",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.info,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "type",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.type,oldMsg);
+    oldUpgReport.type=atoi(oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "toVersion",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.toVersion,oldMsg);
+    oldUpgReport.toVersion=atoi(oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "nowVersion",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.mac,oldMsg);
+    oldUpgReport.nowVersion=atoi(oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "model",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.model,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "updateUrl",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.updateUrl,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "id",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    strcpy(oldUpgReport.id,oldMsg);
+
+    oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "ids",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+    //strcpy(oldUpgReport.ids,oldMsg);
+    oldUpgReport.ids=atoi(oldMsg);
+
+
+
+    printf("mac=%s\n",oldUpgReport.mac);
+    printf("time=%ld\n",oldUpgReport.time_t);
+    printf("info=%s\n",oldUpgReport.info);
+    printf("type=%d\n",oldUpgReport.type);
+    printf("ids=%d\n",oldUpgReport.ids);
+    printf("model=%s\n",oldUpgReport.model);
+    printf("id=%s\n",oldUpgReport.id);
+    printf("nowVersion=%d\n",oldUpgReport.nowVersion);
+    printf("toVersion=%d\n",oldUpgReport.toVersion);
+    printf("updateUrl=%s\n",oldUpgReport.updateUrl);
+
+}
 
 
 #if 0
@@ -239,43 +335,97 @@ int Post(const std::string & strUrl, const std::string & strPost, std::string & 
 #endif
 
 
-int WriteUpgradeFile(UpgradeReport *newReport){
-
-//定义flags:只写，文件不存在那么就创建，文件长度戳为0
-//#define FLAGS O_WRONLY | O_CREAT | O_TRUNC
-////创建文件的权限，用户读、写、执行、组读、执行、其他用户读、执行
-//#define MODE S_IRWXU | S_IXGRP | S_IROTH | S_IXOTH
-
-    FILE *file=NULL;
-    //open("/data/test",O_CREAT|O_RDWR|O_TRUNC);
-   // open("data/test.conf",FLAGS,MODE);
-    file=fopen("/data/test.conf","w+");
-    if(NULL!=file){
-//        fwrite();
-        fclose(file);
-    } else{
-        return -1;
-    }
 
 
-}
 
+/**
+ * 上报升级结果
+ * {"mac":"xxxx","time":1300000000000,"info":"","type":1,"toVersion":2,"nowVersion":1,
+ * "model":"mtk6735","updateUrl":"http://www.aawant.com/xxxx.zip","id":"xxxxxx","ids":1}
+ */
 
+/**
+ *
+ * @return 1:有升级; 0:没升级
+ */
 int CheckUpgradeResult() {
-    char *sMsg = AIcom_GetConfigString((char *) "Update", (char *) "LastVersion",(char *) UPDATE_FILE);
-    if (sMsg == NULL) {
-        printf("Fail to get Update in %s!\n", UPDATE_FILE);
+
+    UpgradeReport report;
+    char oldver[10];
+    char nowver[10];
+    int old;
+    int now;
+    char *oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "Version",(char *) UPDATE_FILE);
+    if (oldMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        return (AI_NG);
+    };
+
+    snprintf(oldver,10,oldMsg);
+    printf("oldver = %s\n",oldver);
+
+    char *nowMsg = AIcom_GetConfigString((char *) "Config", (char *) "Version",(char *) CONFIG_FILE);
+    if (nowMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", CONFIG_FILE);
         return (AI_NG);
     };
     //strcpy(sService, sMsg);
+    strcpy(nowver,oldMsg);
+    printf("nowver = %d\n",atoi(oldver));
+    if(atoi(nowver)>atoi(oldver)){
+        printf("No Upgrage\n");
+        return 1;
+    }
+
     return 0;
 
 }
+
+int WriteUpgradeReportToFile(UpgradeReport *np,char *path){
+    int fd;
+    char buf[512];
+    int len=-1;
+    char ver[10];
+
+    char *currentMsg = AIcom_GetConfigString((char *) "Config", (char *) "Version",(char *) CONFIG_FILE);
+    if (currentMsg == NULL) {
+        printf("Fail to get Version info: %s!\n", CONFIG_FILE);
+        return (AI_NG);
+    };
+
+    strcpy(ver,currentMsg);
+    printf("Current Version %s\n",ver);
+
+    fd=open(path,O_CREAT|O_TRUNC|O_RDWR);
+    if(-1==fd){
+        printf("Cannot open update.conf\n");
+        return -1;
+    }
+
+    snprintf(buf,512,"[UPDATE]\nVersion=%s\nmac=%s\ntime=%d\ninfo=%s\ntype=%d\ntoVersion=%d\nnowVersion=%d\n"
+                      "model=%s\nupdateUrl=%s\nid=%s\nids=%d\n",ver,np->mac,np->time_t,np->info,np->type,
+    np->toVersion,np->nowVersion,np->model,np->updateUrl,np->id,np->ids);
+    len=strlen(buf);
+    printf("buf len = %d\n",len);
+    printf("buf =%s\n",buf);
+
+    if(write(fd,buf,len)!=len){
+        printf("Cannot open update.conf\n");
+        close(fd);
+        return -1;
+    }
+
+    close(fd);
+    return 0;
+
+}
+
 int main() {
 #define myurl "http://192.168.1.118/update.bin"
     int a = 4;
     int dl_lenth;
     int ctime;
+    int ret;
     //test();
    // ReportDownloadResult();
 
@@ -293,6 +443,7 @@ int main() {
     upgReport.nowVersion=0;
     upgReport.toVersion=1;
 
+    /*
     printf("mac=%s\n",upgReport.mac);
     printf("time=%ld\n",upgReport.time_t);
     printf("info=%s\n",upgReport.info);
@@ -303,8 +454,15 @@ int main() {
     printf("nowVersion=%d\n",upgReport.nowVersion);
     printf("toVersion=%d\n",upgReport.toVersion);
     printf("updateUrl=%s\n",upgReport.updateUrl);
+    */
+   // ReportUpgradeResult(&upgReport);
+    WriteUpgradeReportToFile(&upgReport,"/data/etc/update.conf");
+    ret=CheckUpgradeResult();
+    if(ret){
+        printf("Have new ver\n");
+    }
 
-    ReportUpgradeResult(&upgReport);
+    GetUpgradeInfo();
 
     /*
     switch(a) {
@@ -332,9 +490,10 @@ int main() {
     }
 */
     //_upgrade_download_param_basic_init()
+    /*
         while (1){
             sleep(10000);
         }
-
+*/
 
 }
