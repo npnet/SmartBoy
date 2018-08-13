@@ -240,9 +240,21 @@ typedef struct _RecordData {
     int runing;
 } RecordData;
 
+enum
+{
+    SUCCESS								= 0,
+    ERROR_FAIL							= -1,
+    ERROR_EXCEPTION						= -2,
+
+    /* General errors 10100(0x2774) */
+            ERROR_GENERAL						= 10100,
+    ERROR_OUT_OF_MEMORY					= 10101,
+    ERROR_OPEN_FILE						= 10102,
+
+};
 
 
-void recorderCallback(void *data, int len,int code)
+void recorderCallback(void *data, int len,int err_code)
 {
 #if 0
     struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)context;
@@ -263,6 +275,19 @@ void recorderCallback(void *data, int len,int code)
     }
 #endif
 #endif
+FUNC_START
+#define OUT_PCM_NAME "1.pcm"
+    if (SUCCESS == err_code) {
+        FILE *fp = fopen(OUT_PCM_NAME, "ab+");
+        if (NULL == fp) {
+            printf("fopen error\n");
+            return;
+        }
+        fwrite(data, len, 1, fp);
+        fclose(fp);
+    }
+
+FUNC_END
 }
 
 
@@ -338,11 +363,15 @@ int initRecorder(int sampleRateInHz, int channel, int audioFormat, int bufferSiz
     int device=1;
     memset(&conf,0,sizeof(conf));
     snprintf(sound_device_name, sizeof(sound_device_name), "hw:%u,%u", card, device);
+
     conf.rate=sampleRateInHz;
     conf.channels=channel;
-    conf.device_name=sound_device_name;
+    strcpy(conf.device_name,sound_device_name);
     conf.period_count=4;
     conf.period_size=1024;
+
+    printf("device name:%s,rate=%d,channels=%d,period_count=%d,period_size=%d\n",conf.device_name,conf.rate,
+          conf.channels,conf.period_count,conf.period_size);
 
     FUNC_END
     return 0;
@@ -497,11 +526,12 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
     memset(record, 0, sizeof(RecordData));
     //回调函数
     record->cb = recorderCallback;
+    record->cb =_pwrite;
 
     //设置录音参数参数
     rc = snd_pcm_open(&record->handle, conf.device_name, SND_PCM_STREAM_CAPTURE, 0);
     if (rc < 0) {
-        LOG("unable to open pcm device: %s/n", snd_strerror(rc));
+        LOG("unable to open pcm device: %s\n", snd_strerror(rc));
         ret = -1;
         goto error;
     }
@@ -580,7 +610,7 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite)
         goto error;
     }
 
-    goto exit;
+    return ret;
 
 error:
     printf("record start error %d\n", ret);

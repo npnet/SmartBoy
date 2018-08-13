@@ -45,10 +45,10 @@ endif ()
 
 INCLUDE_DIRECTORIES(../include)
 INCLUDE_DIRECTORIES(include)
-ADD_EXECUTABLE(voicon  VoiceConnectService.c recorder.c)
+ADD_EXECUTABLE(voicon  VoiceConnectService.c )
 TARGET_LINK_LIBRARIES(voicon aawant voiceRecog pthread m asound)
 
 
-ADD_EXECUTABLE(rec test/AudioQueue.c test/record.c test/cae_thread.c)
-TARGET_LINK_LIBRARIES(rec asound pthread)
+#ADD_EXECUTABLE(rec test/AudioQueue.c test/record.c test/cae_thread.c)
+#TARGET_LINK_LIBRARIES(rec asound pthread)
 

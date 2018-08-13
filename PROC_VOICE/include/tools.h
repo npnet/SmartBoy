@@ -18,6 +18,7 @@
 #define LOG(format,...) printf("%s,%d:"format,__FUNCTION__,__LINE__,##__VA_ARGS__);
 #define FUNC_START      printf("============[%s]:Start=============\n",__FUNCTION__);
 #define FUNC_END        printf("============[%s]:End  =============\n",__FUNCTION__);
+#define FUNCTION         printf("============[%s]=============\n",__FUNCTION__);
 
 #endif
 

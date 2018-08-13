@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <voiceRecognizer.h>
 #include "stdio.h"
 #include "string.h"
 
@@ -23,7 +24,9 @@
 #include "VoiceConnectIf.h"
 
 typedef struct Object{}jobject;
-typedef struct Recognizer_T{}Recognizer;
+typedef struct Recognizer_T{
+    struct VoiceRecognizer recognizer;
+}Recognizer;
 static Recognizer *jrecognizer=NULL;
 //static jobject *jrecognizer = NULL;
 static void *player = NULL;
@@ -33,8 +36,7 @@ static void *recorder = NULL;
 static int playerFreqs[19];
 static int recognizerFreqs[19];
 static int recognizerFreqsChanged = 0;
-static int recognizerSampleRate = 44100;
-char *javaBuf = NULL;
+static int recognizerSampleRate = 16000;
 
 #define MYPLAYER
 #if 0
@@ -274,18 +276,20 @@ void voice_decoder_VoiceRecognizer_setFreqs(int _freqs[]) {
 
 
 
-//识别开始判断
+//识别开始判断(可加入定时器来判断是否识别超时）
 void recognizerStart(void *_listener, float _soundTime)
 {
+    FUNC_START
     assert(jrecognizer != NULL);
 
+    FUNC_END
 }
 
 //识别结束判断
 void recognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_data, int _dataLen)
 {
     assert(jrecognizer != NULL);
-
+    FUNC_START
 #if 0
     String data = "";
 
@@ -324,6 +328,7 @@ void recognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_d
     } else if(infoType==IT_STRING){
         vr_decodeString(result,_data,_dataLen,resData,4096);
 
+        FUNC_END
 
 #if 0
         // 收到任意网
@@ -369,6 +374,7 @@ void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches,
     short lens[MAX_MATCH_FREQ_COUNT];
     float strengths[MAX_MATCH_FREQ_COUNT];
 
+    FUNC_START
     for(i = 0; i < _matchesLen; i ++)
     {
         freqs[i] = _matches[i].frequency;
@@ -376,6 +382,7 @@ void recognizerMatch(void *_listener, int _timeIdx, struct VoiceMatch *_matches,
         strengths[i] = _matches[i].strength;
         printf("match frequency %d length:%d, strength:%.2f from %d to %d\n", _matches[i].frequency, _matches[i].length, _matches[i].strength, _timeIdx-_matches[i].length, _timeIdx);
     }
+    FUNC_END
 
 }
 
@@ -389,6 +396,7 @@ void voice_decoder_VoiceRecognizer_init(int _sampleRate)
     }
     recognizerFreqsChanged = false;
     jrecognizer=(Recognizer *)malloc(sizeof(Recognizer));
+    //识别频率为多少
     recognizerSampleRate = _sampleRate;
     assert(jrecognizer != NULL);
     FUNC_END
@@ -428,7 +436,14 @@ void  voice_decoder_VoiceRecognizer_setFreqs(int _freqs[],int n)
     FUNC_END
 }
 
-//===========
+
+/**
+ *
+ * @param _writer :对应VoiceRecognizer
+ * @param _data
+ * @param _sampleCout
+ * @return
+ */
 int recorderShortWrite(void *_writer,const void *_data, unsigned long _sampleCout) {
     char *data = (char *)_data;
     void *recognizer = _writer;
@@ -437,7 +452,9 @@ int recorderShortWrite(void *_writer,const void *_data, unsigned long _sampleCou
 }
 
 void *runRecorderVoiceRecognize(void *_recognizer) {
+    FUNC_START
     vr_runRecognizer(_recognizer);
+    FUNC_END
 }
 
 /**
@@ -456,9 +473,13 @@ void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
         recognizer = vr_createVoiceRecognizer2(CPUUsePriority, recognizerSampleRate);
 #else
         //创建声音设别器
+        //recognizer==>VoiceRecognizer
+        //recognizerSampleRate:识别频率
         recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, recognizerSampleRate);
 #endif
 
+//识别匹配
+//#define  CALLBACK_MATCH_EVENT
 #ifdef CALLBACK_MATCH_EVENT
         vr_setRecognizerListener2(recognizer, NULL, recognizerStart, recognizerEnd, recognizerMatch);
 #else
@@ -527,10 +548,7 @@ void voice_decoder_VoiceRecognizer_stop() {
         recognizer = NULL;
     }
 
-    if (javaBuf != NULL) {
-        free(javaBuf);
-        javaBuf = NULL;
-    }
+
 }
 
 /**
@@ -543,9 +561,11 @@ boolean voice_decoder_VoiceRecognizer_isStopped() {
 
 
 int voice_decoder_VoiceRecognizer_writeBuf(char * _audio, int _dataSize) {
+  /*
     if (javaBuf == NULL)
         javaBuf =(char *) malloc(4096);
     if (recognizer != NULL) {
         vr_writeData(recognizer, javaBuf, _dataSize);
     }
+    */
 }

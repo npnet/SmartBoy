@@ -144,13 +144,14 @@ int  main(int argc, char *argv[])
 #endif
     };
 #endif
-    int sampleRate=44100;
+    int sampleRate=16000;
     int freqs[19];
     int length=sizeof(freqs)/ sizeof(int);
     int baseFreq = 16000;
 
-    int channelConfig=2;
-//    int audioFormat=PCM_FORMAT_S16_LE;
+    int channelConfig=1;
+   // int audioFormat=PCM_FORMAT_S16_LE;
+    int audioFormat;
     int bufferSizeInBytes=sampleRate*channelConfig*2;
 
     void *recorder=NULL;
@@ -168,11 +169,17 @@ int  main(int argc, char *argv[])
         freqs[i] = baseFreq + i * 150;
     }
 
-    //
 
-//    initRecorder(sampleRate,channelConfig,audioFormat,bufferSizeInBytes,NULL);
-//    startRecord(recorder,writer,pwrite);
-   // voice_decoder_VoiceRecognizer_init(sampleRate);
-   // voice_decoder_VoiceRecognizer_setFreqs(freqs,length);
-   // voice_decoder_VoiceRecognizer_start(bufferSizeInBytes);
+#if 0
+    initRecorder(sampleRate,channelConfig,audioFormat,bufferSizeInBytes,NULL);
+    startRecord(recorder,writer,pwrite);
+#else
+
+    voice_decoder_VoiceRecognizer_init(sampleRate);
+    voice_decoder_VoiceRecognizer_setFreqs(freqs,length);
+    voice_decoder_VoiceRecognizer_start(bufferSizeInBytes);
+#endif
+    while (1){
+
+    }
 }

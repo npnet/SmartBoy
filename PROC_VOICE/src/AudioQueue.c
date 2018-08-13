@@ -6,6 +6,7 @@
  */
 #include<stdlib.h>
 #include "AudioQueue.h"
+#include "tools.h"
 
 /**
  * base 分配给队列的内存块首地址，内存长度为sizeof(audio_queue_t) + capacity
@@ -112,13 +113,14 @@ int queue_full(audio_queue_t* queue)
 
 int queue_write(audio_queue_t* queue, char data[], int dataLen)
 {
+    FUNC_START
 	if (queue == NULL || data == NULL || dataLen <= 0) {
 		return false;
 	}
 	pthread_mutex_lock(&(queue->mutex));
 	if (queue_left_asyn(queue) < dataLen) {
 		pthread_mutex_unlock(&(queue->mutex));
-		printf("queue_left_asyn queue < dataLen \n");
+		LOG("queue_left_asyn queue < dataLen \n");
 		return false;
 	}
 	// 计算数据区起始地址
@@ -138,6 +140,7 @@ int queue_write(audio_queue_t* queue, char data[], int dataLen)
 	queue->rear = (queue->rear + dataLen) % queue->capacity;
 	pthread_mutex_unlock(&(queue->mutex));
 	native_event_set(queue->sync_event);
+	FUNC_END
 	//printf("queue_write  end  \n");
 	return true;
 }
@@ -145,6 +148,7 @@ int queue_write(audio_queue_t* queue, char data[], int dataLen)
 int queue_read(audio_queue_t* queue, char **data)
 {
 
+    FUNC_START
 	// 计算数据区起始地址
 	char* queueBase = NULL;
 	char* begin = NULL;
@@ -163,7 +167,7 @@ int queue_read(audio_queue_t* queue, char **data)
 
 	temp_buff = (char*)malloc(queueLen);
 	if (NULL == data){
-		printf("queue_read malloc error queueLen%d\n", queueLen);
+		LOG("queue_read malloc error queueLen%d\n", queueLen);
 		return 0;
 	}
 	
@@ -181,7 +185,8 @@ int queue_read(audio_queue_t* queue, char **data)
 	queue->front = (queue->front + queueLen) % queue->capacity;
 	pthread_mutex_unlock(&(queue->mutex));
 	//printf("queue_read end\n");
-
+    LOG("len=%d\n",queueLen);
+    FUNC_END
 	return queueLen;
 }
 
