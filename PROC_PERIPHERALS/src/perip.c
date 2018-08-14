@@ -36,7 +36,7 @@
 
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof ((a)[0]))
-#define LONG_PRESS_DEFAULT_DURATION   5000000     //5 seconds
+#define LONG_PRESS_DEFAULT_DURATION   3000000     //3 seconds
 #define LONG_PRESS_PERIOD   1000*100   //100 seconds
 #define MONITOR_SLEEP_PERIOD   1000*50   //50 seconds
 #define SEC_TO_USEC    1000000 //1s = 1000000us
@@ -250,7 +250,7 @@ static int read_notify(const char *dirname, int nfd)
     int event_pos = 0;
     struct inotify_event *event;
     FUNC_START
-            res = read(nfd, event_buf, sizeof(event_buf));
+    res = read(nfd, event_buf, sizeof(event_buf));
     if (res < (int)sizeof(*event))
     {
         if (errno == EINTR)
@@ -443,9 +443,9 @@ void *key_event_monitor_thread(void *arg)
             read_notify(INPUT_DEVICE_PATH, gufds[0].fd);
         }
 
-        for (i = 1; i < gnfds; i++) {
-            if (gufds[i].revents) {
-                if (gufds[i].revents & POLLIN) {
+        for(i = 1; i < gnfds; i++) {
+            if(gufds[i].revents) {
+                if(gufds[i].revents & POLLIN) {
                     res = read(gufds[i].fd, &event, sizeof(event));
                     if (res < (int) sizeof(event)) {
                         printf("could not get event\n");
@@ -508,7 +508,7 @@ void SendKey(int value){
     PacketHead stPacketHead;
 
     memset(&stPacketHead, 0, sizeof(PacketHead));
-    stPacketHead.iPacketID = PKT_BLNS_VALUE_STATUS;
+    stPacketHead.iPacketID = PKT_SYSTEM_TB_KEY_VALUE;
     stPacketHead.lPacketSize = sizeof(PacketHead);
     stPacketHead.iRecordNum =(short) value;
 

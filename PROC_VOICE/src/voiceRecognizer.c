@@ -79,6 +79,7 @@ struct kiss_fft_out kiss_fft_execute(struct kissFFT *_this, ffttype *_in)
 {
 	struct kiss_fft_out out;
 	FUNC_START
+    LOG("%s\n","执行快速傅里叶变换");
 	kiss_fftr(_this->cfg, _in, _this->out);
 	FUNC_END
 	return *fft_out_init(&out, _this->out, _this->fftSize / 2 + 1);
@@ -867,8 +868,10 @@ void ms_reset(struct MaybeSignal *_this)
 
 void ms_onDetect(struct MaybeSignal *_this, bool _hasSignal)
 {
+    FUNC_START
 	_this->totalDetectCount ++;
 	if(_hasSignal)_this->validDetectCount ++;
+	FUNC_END
 }
 
 bool ms_isDiscoveryFinished(struct MaybeSignal *_this)
@@ -900,6 +903,7 @@ static int MaybeSignalQueue_globalSignalIdx = 0;
 struct MaybeSignal *msq_startDiscoverySignal(struct MaybeSignalQueue *_this, TPos _startPos, TPos _endPos)
 {
 	struct MaybeSignal *r = NULL;
+	FUNC_START
 	assert(_this->currDiscoveryDiscarded == false);
 	if (cq_size(&_this->signalQueue) >= cq_capacity(&_this->signalQueue))
 	{		
@@ -919,7 +923,7 @@ struct MaybeSignal *msq_startDiscoverySignal(struct MaybeSignalQueue *_this, TPo
 	r->endPos = _endPos;
 	r->startTime = getTickCount2();
 	r->endTime = 0;
-
+    FUNC_END
 	return r;
 }
 
@@ -927,6 +931,7 @@ struct MaybeSignal *msq_currDiscoveryingSignal(struct MaybeSignalQueue *_this)
 {
 	
 	struct MaybeSignal * signal = NULL;
+	FUNC_START
 	if (_this->currDiscoveryDiscarded)
 	{
 		signal = &_this->discardSignal;
@@ -940,12 +945,14 @@ struct MaybeSignal *msq_currDiscoveryingSignal(struct MaybeSignalQueue *_this)
 		signal = NULL;
 		assert(!_this->currDiscoveryDiscarded);
 	}
+	FUNC_END
 	return signal;
 }
 
 void msq_endDiscoverySignal(struct MaybeSignalQueue *_this)
 {
 	struct MaybeSignal *signal;
+	FUNC_START
 	if (_this->currDiscoveryDiscarded)
 	{
 		signal = &_this->discardSignal;
@@ -957,6 +964,7 @@ void msq_endDiscoverySignal(struct MaybeSignalQueue *_this)
 	}
 	signal->discoveryFinished = true;
 	signal->endTime = getTickCount2();
+	FUNC_END
 }
 
 struct MaybeSignal *msq_startRecognizeSignal(struct MaybeSignalQueue *_this)
@@ -1054,6 +1062,7 @@ void fsd_detect(struct FreqSignalDetector *_this, struct VoiceEvent *_event, str
 	enum DetectResult hasSignal_ = DR_Ignore;
 	float *outAmptitudes = _this->parentDetector->outAmptitudes;
 	FUNC_START
+    LOG("信号频率探测\n");
 	asize1(outAmptitudes, SignalDetector_FFTSize_Default / 2 + 1);
 	_this->hasNewSignal = false;
 	if (!_ignore)
@@ -1061,8 +1070,10 @@ void fsd_detect(struct FreqSignalDetector *_this, struct VoiceEvent *_event, str
 		_this->signalStartRelative = 0;
 		hasSignal_ = DR_No;
 
+		LOG("minFreqIdx=%d,maxFreqIdx=%d\n",_this->minFreqIdx,_this->maxFreqIdx);
 		for(i = _this->minFreqIdx; i < _this->maxFreqIdx; i ++)
 		{
+		    //adata(outAmptitudes, i)<==>outAmptitudes[i]
 			adata(outAmptitudes, i) = (float)sqrt((fft_out_r(_fftOut, i) * fft_out_r(_fftOut, i) + fft_out_i(_fftOut, i) * fft_out_i(_fftOut, i)));
 			if(adata(outAmptitudes, i) > maxAmp)maxAmp = adata(outAmptitudes, i);
 			if(adata(outAmptitudes, i) < maxAmp && adata(outAmptitudes, i) > max2Amp)max2Amp = adata(outAmptitudes, i);
@@ -1088,7 +1099,10 @@ void fsd_detect(struct FreqSignalDetector *_this, struct VoiceEvent *_event, str
 		}
 		max2avg = maxAmp/ ((_this->longTermAvgAmp > avgAmp)?avgAmp:_this->longTermAvgAmp);
 #endif
-		if(fsdInitTime == 0)fsdInitTime = getTickCount2();
+		if(fsdInitTime == 0){
+		    fsdInitTime = getTickCount2();
+		    LOG("%lu\n",fsdInitTime)
+		}
 
 		if(!_this->normalAmplitudeInited)
 		{
@@ -1146,12 +1160,14 @@ void fsd_detect(struct FreqSignalDetector *_this, struct VoiceEvent *_event, str
 
 	if (hasSignal_ != DR_Ignore)
 	{
+	    LOG("hasSignal_ != DR_Ignore\n");
 		bool hasSignal = (hasSignal_ == DR_Yes);
 		struct MaybeSignal *currSignal = msq_currDiscoveryingSignal(&_this->maybeSignalQueue);
 		if(currSignal != NULL)ms_onDetect(currSignal, hasSignal);
 		
 		if(hasSignal)
 		{
+            LOG("1\n");
 			if (_this->preHasSignal)
 			{
 				assert(!currSignal->discoveryFinished);
@@ -1206,6 +1222,7 @@ void fsd_detect(struct FreqSignalDetector *_this, struct VoiceEvent *_event, str
 		}
 		else
 		{
+            LOG("2\n");
 			if (_this->preHasSignal)
 			{
 				assert(!currSignal->discoveryFinished);
@@ -1509,6 +1526,7 @@ struct RecognitionListener *vd_getListener(struct VoiceProcessor *_this, int _fr
 
 struct MultiMaybeSignalQueueWrapper *mmsq_init(struct MultiMaybeSignalQueueWrapper *_this)
 {
+    FUNC_START
 	_this->queueCount = 0;
 	_this->indicatePos = -1;
 	_this->preEndPos = -1;
@@ -1518,6 +1536,7 @@ struct MultiMaybeSignalQueueWrapper *mmsq_init(struct MultiMaybeSignalQueueWrapp
 	_this->maybeSignal.isDiscoveryFinished = mmsq_isDiscoveryFinished;
 	mtx_init(&_this->m, mtx_plain);
 	mymemset(_this->recogningMaySignals, 0, sizeof(_this->recogningMaySignals));
+	FUNC_END
 	return _this;
 }
 
@@ -1573,6 +1592,7 @@ bool mmsq_isDiscoveryFinished(struct MaybeSignal *this_)
 
 void mmsq_indicate(struct MultiMaybeSignalQueueWrapper *_this, TPos _processDataStart, TPos _processDataEnd)
 {
+    FUNC_START
 	if (_this->queueCount > 1)
 	{
 		int i;
@@ -1593,11 +1613,13 @@ void mmsq_indicate(struct MultiMaybeSignalQueueWrapper *_this, TPos _processData
 			}
 		}
 	}
+	FUNC_END
 }
 
 void mmsq_endAllDiscoveryingSignals(struct MultiMaybeSignalQueueWrapper *_this)
 {
 	int i;
+	FUNC_START
 	asize2(_this->recogningMaySignals, _this->queueCount, _this->maybeSignalQueues, _this->queueCount);
 	for (i = 0; i < _this->queueCount; i ++)
 	{
@@ -1608,6 +1630,7 @@ void mmsq_endAllDiscoveryingSignals(struct MultiMaybeSignalQueueWrapper *_this)
 			msq_endDiscoverySignal(adata(_this->maybeSignalQueues, i));
 		}
 	}
+	FUNC_END
 }
 
 struct MaybeSignal *mmsq_startRecognizeSignal(struct MultiMaybeSignalQueueWrapper *_this)
@@ -1748,6 +1771,12 @@ void mmsq_endRecognizeSignal(struct MultiMaybeSignalQueueWrapper *_this)
 	FUNC_END
 }
 
+
+/**
+ * 信号探测处理
+ * @param this_
+ * @param _event
+ */
 void sd_process(struct VoiceProcessor *this_, struct VoiceEvent *_event)
 {
 	struct SignalDetector *_this = (struct SignalDetector *)this_;
@@ -1757,6 +1786,7 @@ void sd_process(struct VoiceProcessor *this_, struct VoiceEvent *_event)
 	FUNC_START
 	bool ignore = true;
 	asize1(_this->freqDetectors, _this->detectorCount);
+	LOG("detectorCount=%d\n",_this->detectorCount);
 	_this->hasNewSignal = false;
 	if(!_this->normalAmplitudeInited)
 	{
@@ -1954,14 +1984,14 @@ int pvp_realProcess(void *_p)
 #ifndef COND_NO_MUTEX
 		mtx_lock(&_this->m);
 #endif
-		LOG("cnd_wait.........\n");
+		LOG("cnd_wait.........1\n");
 		cnd_wait(&_this->cond, &_this->m);
 #ifndef COND_NO_MUTEX
 		mtx_unlock(&_this->m);
 #endif
 
 		_this->realProcessing = true;
-		
+        LOG("cnd_wait.........2\n");
 		signal = mmsq_startRecognizeSignal(_this->maybeSignalQueue);
 		while(signal)
 		{
@@ -2081,6 +2111,7 @@ int pvp_realProcess(void *_p)
 struct VoiceRecognizer *vrr_init(struct VoiceRecognizer *_this, enum ProcessorType _processorType, int _sampleRate, int _channel, int _bits, int _bufferSize, int _overlap)
 {
     FUNC_START
+    LOG("----->采样频率=%d,通道=%d,位数=%d,缓冲大小=%d,重叠区？(overlap)=%d\n",_sampleRate,_channel,_bits,_bufferSize,_overlap);
 	b_init2(&_this->buffer, DEFAULT_BUFFER_COUNT, _bufferSize * (((_bits + 7) / 8) * _channel), true);
 	bdw_init(&_this->writer, (struct BufferSource *)_this, _channel, _bits, _bufferSize, _overlap, false);
 	_this->parent.freeBuffer = vrr_freeBuffer;
@@ -2416,6 +2447,7 @@ int bdw_write(struct BufferDataWriter *_this, char *_data, int _dataLen)
 	char *bufferData;
 	int bufferDataLen;
 FUNC_START
+    LOG("dataLen=%d\n",_dataLen);
 	if (_this->writeType == WriteTypeNone)
 	{
 		_this->writeType = WriteTypeShort;

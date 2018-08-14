@@ -182,6 +182,8 @@ void *vr_createVoiceRecognizer2(enum DecoderPriority _decoderPriority, int _samp
         bufferSize = 1024;
     }
     overlap = bufferSize - shouldBufferSize / 2;
+    LOG("sampleRate=%d,bufferSize=%d,overlap=%d\n",_sampleRate,bufferSize,overlap);
+    //创建识别器
     recognizer = _new(struct VoiceRecognizer, vrr_init, processorType, _sampleRate, 1, 16, bufferSize, overlap);
     FUNC_END
     return recognizer;

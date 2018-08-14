@@ -18,11 +18,11 @@ AUX_SOURCE_DIRECTORY(src DIR_SRCS)
 #ADD_EXECUTABLE(upgraded ${DIR_SRCS})
 
 
-ADD_EXECUTABLE(upgraded src/AawantUpgrade.c
+ADD_EXECUTABLE(ProcUpgrade src/AawantUpgrade.c
         src/upg_control.c
         src/upg_download.c
         src/upg_utility.c)
-TARGET_LINK_LIBRARIES(upgraded aawant pthread curl)
+TARGET_LINK_LIBRARIES(ProcUpgrade aawant pthread curl)
 
 #if(t STREQUAL test)
 #AUX_SOURCE_DIRECTORY()

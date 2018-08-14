@@ -32,8 +32,12 @@ when            who              why
 
 #include "AudioQueue.h"
 #include "error.h"
+
+
+#define __USE_GNU
 #include <sched.h>
 #include <pthread.h>
+
 
 
 /* ------------------------------------------------------------------------
@@ -113,12 +117,16 @@ static void *RecordThread(void *param) {
     RecordData *record = (RecordData *) param;
     int ret = 0;
     int i=0,j=0;
-    cpu_set_t mask;
+
     FUNC_START
     printf("RecordThread record:%x\n", record);
-   // CPU_ZERO(&mask);
-   // CPU_SET(0,&mask);
-   // ret = sched_setaffinity(0, sizeof(mask), &mask);
+#if 0
+    //绑定CPU
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(0,&mask);
+    ret = sched_setaffinity(0, sizeof(mask), &mask);
+#endif
     char *new_buffer=(char *)malloc(record->buff_size*2);
 
     //LOG("sched_setaffinity return = %d\n", ret);
@@ -139,6 +147,7 @@ static void *RecordThread(void *param) {
             continue;
         }
 //=========
+#if 0
         //增加通道号
         for(i=0;i<record->buff_size;i+=2){
             new_buffer[2*i + 0] = 0;
@@ -153,7 +162,9 @@ static void *RecordThread(void *param) {
             queue_write(record->queue, new_buffer, record->buff_size * 2);
         }
 //==========
-       // queue_write(record->queue, record->buffer, record->buff_size);
+#else
+        queue_write(record->queue, record->buffer, record->buff_size*2);
+#endif
     }
     if(new_buffer != NULL){
         free(new_buffer);
@@ -303,12 +314,12 @@ int main(int argc, char **argv) {
         return 1;
     }
     unsigned int card = 0;
-    unsigned int device = 1;
-    unsigned int channels = 8;
-    unsigned int rate = 16000;
+    unsigned int device = 0;
+    unsigned int channels = 2;
+    unsigned int rate = 44100;
 
     unsigned int frames;
-    unsigned int period_size = 1024;
+    unsigned int period_size = 512;
     unsigned int period_count = 4;
 
     char sound_device_name[256];

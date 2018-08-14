@@ -22,6 +22,29 @@ struct pcm_config conf;
 
 #define QUEUE_BUFF_MULTIPLE 1000
 
+#define ID_RIFF 0x46464952
+#define ID_WAVE 0x45564157
+#define ID_FMT  0x20746d66
+#define ID_DATA 0x61746164
+
+
+struct wav_header {
+    uint32 riff_id;
+    uint32 riff_sz;
+    uint32 riff_fmt;
+    uint32 fmt_id;
+    uint32 fmt_sz;
+    uint16 audio_format;
+    uint16 num_channels;
+    uint32 sample_rate;
+    uint32 byte_rate;
+    uint16 block_align;
+    uint16 bits_per_sample;
+    uint32 data_id;
+    uint32 data_sz;
+};
+
+struct wav_header header;
 
 typedef void (*record_audio_fn)(void *context,void *buf,int len,int err_code);
 
@@ -86,14 +109,17 @@ void recorderCallback(void *context,void *data, int len,int err_code)
 
     FUNC_START
 //写到一个文件
-#if 0
+#if 1
 #define OUT_PCM_NAME "1.pcm"
+
     if (SUCCESS == err_code) {
+
         FILE *fp = fopen(OUT_PCM_NAME, "ab+");
         if (NULL == fp) {
             printf("fopen error\n");
             return;
         }
+        LOG("往文件写入数据长度=%d\n",len);
         fwrite(data, len, 1, fp);
         fclose(fp);
     }
@@ -111,7 +137,7 @@ void recorderCallback(void *context,void *data, int len,int err_code)
 }
 
 
-int initRecorder(int sampleRateInHz, int channel, int _audioFormat, int _bufferSize, void **_precorder){
+int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _bufferSize, void **_precorder){
     char sound_device_name[256];
     int card=0;
     int device=0;
@@ -119,12 +145,18 @@ int initRecorder(int sampleRateInHz, int channel, int _audioFormat, int _bufferS
     snprintf(sound_device_name, sizeof(sound_device_name), "hw:%u,%u", card, device);
 
     conf.rate=sampleRateInHz;
-    conf.channels=channel;
+    conf.channels=channels;
     strcpy(conf.device_name,sound_device_name);
     conf.period_count=4;
-    conf.period_size=1024;
-
-    printf("device name:%s,rate=%d,channels=%d,period_count=%d,period_size=%d\n",conf.device_name,conf.rate,
+    conf.period_size=512;
+#ifdef D_RECORD
+    //每次采样多少位
+    header.bits_per_sample =16;
+    header.byte_rate = (header.bits_per_sample / 8) * conf.channels * conf.rate;
+    header.block_align = conf.channels * (header.bits_per_sample / 8);
+    header.data_id = ID_DATA;
+#endif
+    LOG("录音设备初始化--->设备名:%s,采样频率=%d,通道=%d,period_count=%d,period_size=%d\n",conf.device_name,conf.rate,
            conf.channels,conf.period_count,conf.period_size);
 
     FUNC_END
@@ -138,11 +170,11 @@ static void *QueueReadThread(void *param) {
     RecordData *record = (RecordData *) param;
     FUNC_START
     int readLen = 0;
-    printf("QueueReadThread record :%x\n", record);
+    //printf("QueueReadThread record :%x\n", record);
     while (record->runing) {
         char *data_buff = NULL;
         readLen = queue_read(record->queue, &data_buff);
-
+        LOG("从队列读出数据长度readLen=%d\n", readLen);
         if (readLen<=0) {
             //printf("queue_read readLen = 0\n");
             usleep(16000);
@@ -168,18 +200,24 @@ static void *RecordThread(void *param) {
     RecordData *record = (RecordData *) param;
     int ret = 0;
     int i=0,j=0;
-    cpu_set_t mask;
+
     FUNC_START
     printf("RecordThread record:%x\n", record);
-    // CPU_ZERO(&mask);
-    // CPU_SET(0,&mask);
-    // ret = sched_setaffinity(0, sizeof(mask), &mask);
-    char *new_buffer=(char *)malloc(record->buff_size*2);
-
+    /*
+    //绑定CPU核
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(0,&mask);
+    ret = sched_setaffinity(0, sizeof(mask), &mask);
+     */
+   // char *new_buffer=(char *)malloc(record->buff_size*2);
+    char *new_buffer=(char *)malloc(record->buff_size);
+    LOG("new_buffer size=%d\n",record->buff_size*2);
     //LOG("sched_setaffinity return = %d\n", ret);
     while (record->runing) {
         ret = snd_pcm_readi(record->handle, record->buffer, record->frames);
-        //printf("snd_pcm_readi return = %d\n", ret);
+        printf("snd_pcm_readi return = %d\n", ret);
+        LOG("从设备读出数据长度=%d\n",ret);
         if (ret == -EPIPE) {
             /* EPIPE means overrun */
             LOG("overrun occurred\n");
@@ -194,6 +232,7 @@ static void *RecordThread(void *param) {
             continue;
         }
 //=========
+#if 0
         //增加通道号
         for(i=0;i<record->buff_size;i+=2){
             new_buffer[2*i + 0] = 0;
@@ -208,7 +247,11 @@ static void *RecordThread(void *param) {
             queue_write(record->queue, new_buffer, record->buff_size * 2);
         }
 //==========
-        // queue_write(record->queue, record->buffer, record->buff_size);
+#else
+         LOG("往队列写入数据长度=%d\n",record->buff_size);
+         queue_write(record->queue, record->buffer, ret);
+        //queue_write(record->queue, record->buffer, record->buff_size *2);
+#endif
     }
     if(new_buffer != NULL){
         free(new_buffer);

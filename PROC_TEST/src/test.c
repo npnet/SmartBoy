@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+#include <pthread.h>
 #include "AI_PKTHEAD.h"
 #include "AawantData.h"
 #include "AIcom_Tool.h"
@@ -427,6 +428,58 @@ void test_bt_connect() {
 
 }
 
+static pthread_mutex_t mtx=PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond=PTHREAD_COND_INITIALIZER;
+
+void *Func_test1(void *arg){
+    printf("%s:start\n",__FUNCTION__);
+    pthread_mutex_lock(&mtx);
+    pthread_cond_wait(&cond,&mtx);
+    pthread_mutex_unlock(&mtx);
+    printf("%s:end\n",__FUNCTION__);
+}
+
+void *Func_test2(void *arg){
+    printf("%s:start\n",__FUNCTION__);
+    pthread_mutex_lock(&mtx);
+    pthread_cond_wait(&cond,&mtx);
+    pthread_mutex_unlock(&mtx);
+    printf("%s:end\n",__FUNCTION__);
+}
+
+
+int test_pthread(){
+    pthread_t pid1;
+    pthread_t pid2;
+
+    int ret;
+    ret=pthread_create(&pid1,NULL,Func_test1,NULL);
+    if(ret){
+        printf("create pthread 1 failed\n");
+        return -1;
+    }
+    ret=pthread_create(&pid1,NULL,Func_test2,NULL);
+    if(ret){
+        printf("create pthread 2 failed\n");
+        return -1;
+    }
+
+    while (1){
+        for(int i=0;i<10;i++){
+            printf("--%d--\n",i);
+            sleep(2);
+            if(i==9){
+                //pthread_cond_broadcast(&cond);
+                pthread_cond_signal(&cond);
+            }
+
+        }
+    }
+
+}
+
+
+
 
 void kill_master() {
     AAWANTSendPacketHead(server_sock, PKT_SYSTEM_SHUTDOWN);
@@ -450,7 +503,7 @@ int main(int argc, char *argv[]) {
     int nError;
     // 重定向输出
     //nError = SetTraceFile((char *)"TEST",(char *)CONFIG_FILE);
-
+    test_pthread();
     /* 与主进程建立联接 */
     sMsg = AIcom_GetConfigString((char *) "Config", (char *) "Socket", (char *) CONFIG_FILE);
     if (sMsg == NULL) {
@@ -511,6 +564,10 @@ int main(int argc, char *argv[]) {
         test_all();
         //test_single();
     }
+
+    if (argc >= 2 && strcasecmp(argv[1], "pthread") == 0) {
+
+    };
 
 #if 0
     //发送升级命令给主程序

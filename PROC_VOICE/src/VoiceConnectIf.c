@@ -36,7 +36,7 @@ static void *recorder = NULL;
 static int playerFreqs[19];
 static int recognizerFreqs[19];
 static int recognizerFreqsChanged = 0;
-static int recognizerSampleRate = 16000;
+static int recognizerSampleRate = 44100;
 
 #define MYPLAYER
 #if 0
@@ -445,6 +445,7 @@ void  voice_decoder_VoiceRecognizer_setFreqs(int _freqs[],int n)
  * @return
  */
 int recorderShortWrite(void *_writer,const void *_data, unsigned long _sampleCout) {
+
     char *data = (char *)_data;
     void *recognizer = _writer;
     const int bytePerFrame = 2;
@@ -492,7 +493,7 @@ void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
         assert(recorder == NULL);
 
         //初始化录音机
-        int r = initRecorder(recognizerSampleRate, 1, 16, _minBufferSize, &recorder);
+        int r = initRecorder(recognizerSampleRate, 2, 16, _minBufferSize, &recorder);
         if (r != 0) {
             printf("recorder init error:%d\n", r);
             return;
