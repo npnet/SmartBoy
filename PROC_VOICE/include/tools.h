@@ -17,11 +17,15 @@ typedef signed short int16;
 
 typedef signed long long int64;
 
-#if 0
+#if 1
 #define Myprintf(...)
 #define FUNC_START
 #define FUNC_END
-#define LOG(format,...);
+#define LOG(format,...)
+#define FUNC_START
+#define FUNC_END
+#define FUNCTION
+
 
 #else
 #define Myprintf(format,...)    printf("%s,%d==>"format,__FUNCTION__,__LINE__,##__VA_ARGS__);

@@ -434,6 +434,7 @@ void *key_event_monitor_thread(void *arg)
 
     while (1)
     {
+        usleep(10000);
         //pollres > 0,gufds准备好好读、写或出错状态
         pollres = poll(gufds, gnfds, -1);
 

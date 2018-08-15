@@ -140,6 +140,7 @@ int queue_write(audio_queue_t* queue, char data[], int dataLen)
 	queue->rear = (queue->rear + dataLen) % queue->capacity;
 	pthread_mutex_unlock(&(queue->mutex));
 	native_event_set(queue->sync_event);
+	LOG("发出pthread_cond_signal\n");
 	FUNC_END
 	//printf("queue_write  end  \n");
 	return true;
@@ -157,13 +158,15 @@ int queue_read(audio_queue_t* queue, char **data)
 	if (queue == NULL || data == NULL) {
 		return 0;
 	}
-	//printf("queue_read  pthread_cond_wait begin\n");
-	native_event_wait(queue->sync_event, 0x7fffffff); 
+	LOG("等待数据读取，pthread_cond_timedwait\n");
+	native_event_wait(queue->sync_event, 0x7fffffff);
+
 	pthread_mutex_lock(&(queue->mutex));
+    LOG("收到数据，开始读\n");
 	queueBase = (char*)(queue + 1);
 	begin = &((queueBase)[queue->front]);
 	queueLen = queue_len_asyn(queue);
-	//printf("queue_read queueLen  %d\n", queueLen);
+	LOG("queue_read queueLen  %d\n", queueLen);
 
 	temp_buff = (char*)malloc(queueLen);
 	if (NULL == data){

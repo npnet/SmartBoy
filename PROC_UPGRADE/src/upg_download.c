@@ -12,7 +12,7 @@
 #include "upg_download.h"
 #include "curl/curl.h"
 #include "AIEUComm.h"
-#include "AawantData.hbak"
+#include "AawantData.h"
 
 #define BUF_SIZE_ENTRIE 256
 #define BUF_SIZE_HALF 128
@@ -1141,6 +1141,7 @@ int32 DownloadFullOtaPackage2(DOWNLOAD_PARAM dl, char *url, char *save_path) {
 
 
 int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM dl) {
+    /*
     FROM_UPGRADE_DATA upgradeData;
 
     upgradeData.status = UPGRADE_FINISH_AND_REQUEST_REBOOT;
@@ -1148,6 +1149,7 @@ int32 Aawant_Notify_Flash_Done(DOWNLOAD_PARAM dl) {
     // printf("[%s]==>dl_sock=%d\n",__FUNCTION__,a_dl_param.dl_sock);
     printf("[%s]==>dl_sock=%d\n", __FUNCTION__, dl.dl_sock);
     AAWANTSendPacket(dl.dl_sock, PKT_UPGRADE_FEEDBACK, (char *) &upgradeData, sizeof(upgradeData));
+     */
 }
 
 #define ZIP_PATH  "/tmp/update.zip"

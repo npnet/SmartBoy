@@ -20,9 +20,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-#include <PROC_VOICE/include/audioRecorder.h>
+#include <audioRecorder.h>
 #include "AI_PKTHEAD.h"
 #include "AawantData.h"
+//#include "alsa/pcm.h"
 //#include "AIcom_Tool.h"
 //#include "AILogFile.h"
 //#include "AIprofile.h"
@@ -40,6 +41,83 @@ int					 server_sock;		// 服务器SOCKET
 void *VoiConThread(){}
 
 
+#if 0
+struct TimeRangeSignal *genSignals(int *_returnSignalLen, struct SignalBlock *_blocks, int *_returnBlockCount)
+{
+
+    static struct TimeRangeSignal signals[] =
+
+            {
+                    {2, -2, false}, {13, -2, false}, {2, -2, false}, {5, -2, false}, {1, -2, false}, {3, -2, false},
+                    {2, -2, false}, {4, -2, false}, {3, -2, false}, {2, -2, false}, {5, -2, false}, {4, -2, false},
+                    {0, -2, false}, {9, -2, false}, {14, -2, false},
+                    {1, -2, false}, {2, -2, false}, {3, -2, false}, {4, -2, false}, {5, -2, false}, {6, -2, false},
+                    {7, -2, false}, {0, -2, false}, {1, -2, false}, {2, -2, false}, {3, -2, false}, {4, -2, false},
+                    {5, -2, false}, {15, -2, false}, {4, -2, false},
+                    {6, -2, false}, {7, -2, false}, {8, -2, false}, {9, -2, false}, {0, -2, false}, {9, -2, false},
+                    {7, -2, false}, {10, -2, false}, {10, -2, false}, {9, -2, false}, {11, -2, false}
+            };
+    int i, j;
+    *_returnSignalLen = sizeof(signals)/sizeof(struct TimeRangeSignal);
+    for (i = 0; i < *_returnSignalLen; i ++)
+    {
+        for (j = 0; j < MAX_RANGE_IDX_COUNT; j ++)
+        {
+            if(signals[i].idxes[j] < -1)break;
+            signals[i].idxes[j] += 1;
+        }
+    }
+    _blocks[0].startIdx = 0;
+    _blocks[0].signalCount = 16;
+    _blocks[1].startIdx = 16;
+    _blocks[1].signalCount = 16;
+    _blocks[2].startIdx = 32;
+    _blocks[2].signalCount = 12;
+    *_returnBlockCount = 3;
+    return signals;
+}
+
+void test_loopBlock()
+{
+    int signalLen = 0;
+    struct SignalBlock blocks[MAX_BLOCK_COUNT];
+    int blockCount = 0;
+    struct TimeRangeSignal *signals = genSignals(&signalLen, blocks, &blockCount);
+
+    int crcBuf[MAX_SIGNAL_SIZE];
+    rstype rsBuf[RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE];
+    int crcCheck = 0;
+
+    int i, blockSize, blockIdx;
+    int triedCount = 0, dataLen = 0;
+    for (i = 0; i < signalLen; i ++)
+    {
+
+        blockIdx = i/(RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE);
+        blockSize = ((blockIdx == (blockCount-1) && signalLen%(RS_CORRECT_BLOCK_SIZE + RS_CORRECT_SIZE) > 0)?signalLen%(RS_CORRECT_BLOCK_SIZE + RS_CORRECT_SIZE):(RS_CORRECT_BLOCK_SIZE + RS_CORRECT_SIZE));
+        if (i%(RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE)<blockSize-2)
+        {
+            crcBuf[blockIdx*RS_CORRECT_BLOCK_SIZE+(i%(RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE))] = signals[i].idx1-1;
+        }
+    }
+    crcCheck = mrl_decode(NULL, crcBuf, signalLen-(blockCount*2));
+    for (i = 0; i<signalLen-(blockCount*2);i ++)
+    {
+        printf("%c", hexChars[crcBuf[i]]);
+    }
+    printf(" init crc check:%d\n", crcCheck);
+
+    memset(crcBuf, 0, sizeof(crcBuf));
+    rsInit();
+    crcCheck = loopBlock(NULL, signals, signalLen, blocks, blockCount, 0, crcBuf, &dataLen, NULL, &triedCount);
+    printf("loop crc check:%d\n", crcCheck>0);
+}
+
+int main(int argc, char* argv[])
+{
+    test_loopBlock();
+}
+#else
 
 int CreateVCThread(){
     pthread_t keyId;
@@ -144,7 +222,7 @@ int  main(int argc, char *argv[])
 #endif
     };
 #endif
-    int sampleRate=16000;
+    int sampleRate=44100;
     int freqs[19];
     int length=sizeof(freqs)/ sizeof(int);
     int baseFreq = 16000;
@@ -154,14 +232,8 @@ int  main(int argc, char *argv[])
     int audioFormat;
     int bufferSizeInBytes=sampleRate*channelConfig*2;
 
-    void *recorder=NULL;
-    void *writer=NULL;
-    r_pwrite pwrite;
-    printf("length=%d\n",length);
 
-    //int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-    //int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-    //int bufferSizeInBytes = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+    //LOG("length=%d\n",length);
 
 
     for(int i = 0; i < length; i ++)
@@ -178,8 +250,11 @@ int  main(int argc, char *argv[])
     voice_decoder_VoiceRecognizer_init(sampleRate);
     voice_decoder_VoiceRecognizer_setFreqs(freqs,length);
     voice_decoder_VoiceRecognizer_start(bufferSizeInBytes);
+
 #endif
     while (1){
 
     }
 }
+
+#endif

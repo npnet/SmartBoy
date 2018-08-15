@@ -1248,8 +1248,18 @@ void fats_onFFTAmpsRange(struct FreqAmpsEventStat *_this, struct FFTAmpsRange *_
 #endif
 }
 
-struct SignalAnalyser *
-sa_init(struct SignalAnalyser *_this, int _sampleRate, int _channel, int _bits, int _fftSize, int _overlap) {
+/**
+ * 信号分析器
+ * @param _this
+ * @param _sampleRate
+ * @param _channel
+ * @param _bits
+ * @param _fftSize
+ * @param _overlap
+ * @return
+ */
+struct SignalAnalyser *sa_init(struct SignalAnalyser *_this, int _sampleRate, int _channel, int _bits, int _fftSize, int _overlap)
+{
     FUNC_START
     _this->maxFreqYDistance = (FREQ_DISTANCE / (((float) _sampleRate) / (_fftSize / 2)));
     _this->fftSize = _fftSize;
@@ -1380,6 +1390,7 @@ int getIdxFromFrequencyFromCache(struct SignalAnalyser *_this, int _pitch) {
 
 void sa_setFreqs(struct SignalAnalyser *_this, int *_freqs) {
     int i, minIdx, maxIdx;
+    LOG("freqs=%d\n",*_freqs);
     _this->CODE_FREQUENCY = _freqs;
     _this->minFrequency = MAX_INT;
     _this->maxFrequency = 0;

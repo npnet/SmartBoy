@@ -291,6 +291,7 @@ VOICERECOGNIZEDLL_API vr_bool vr_isRecognizerStopped(void *_recognizer) {
 VOICERECOGNIZEDLL_API int vr_writeData(void *_recognizer, char *_data, int _dataLen) {
     struct VoiceRecognizer *recognizer = (struct VoiceRecognizer *) _recognizer;
     struct BufferDataWriter *writer = vrr_getBufferWriter(recognizer);
+    LOG("datalen=%d\n",_dataLen);
     return bdw_write(writer, _data, _dataLen);
 }
 

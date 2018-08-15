@@ -36,7 +36,7 @@ static void *recorder = NULL;
 static int playerFreqs[19];
 static int recognizerFreqs[19];
 static int recognizerFreqsChanged = 0;
-static int recognizerSampleRate = 44100;
+static int recognizerSampleRate = 16000;
 
 #define MYPLAYER
 #if 0
@@ -328,7 +328,7 @@ void recognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_d
     } else if(infoType==IT_STRING){
         vr_decodeString(result,_data,_dataLen,resData,4096);
 
-        FUNC_END
+
 
 #if 0
         // 收到任意网
@@ -361,6 +361,8 @@ void recognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_d
 #endif
 
     }
+
+    FUNC_END
 
 }
 
@@ -449,7 +451,10 @@ int recorderShortWrite(void *_writer,const void *_data, unsigned long _sampleCou
     char *data = (char *)_data;
     void *recognizer = _writer;
     const int bytePerFrame = 2;
-    return vr_writeData(recognizer, data, ((int) _sampleCout) * bytePerFrame);
+
+    //return vr_writeData(recognizer, data, ((int) _sampleCout) * bytePerFrame);
+    return vr_writeData(recognizer, data, ((int) _sampleCout) );
+
 }
 
 void *runRecorderVoiceRecognize(void *_recognizer) {
@@ -464,11 +469,11 @@ void *runRecorderVoiceRecognize(void *_recognizer) {
  */
 void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
     FUNC_START
-    printf("minBufferSize=(%d)\n", _minBufferSize);
+   // LOG("识别缓冲minBufferSize=%d\n", _minBufferSize);
     if (recognizer != NULL && !vr_isRecognizerStopped(recognizer))
         return;
 
-    printf("recognizerFreqs(%d):%d\n", sizeof(recognizerFreqs) / sizeof(int), recognizerFreqs[0]);
+    LOG("识别频率recognizerFreqs=%d:%d\n", sizeof(recognizerFreqs) / sizeof(int), recognizerFreqs[0]);
     if (recognizer == NULL) {
 #if ((defined(FREQ_ANALYSE_TIME_MATCH2) && defined(TV_LIB)) || defined(TEST_MATCH_FREQ))
         recognizer = vr_createVoiceRecognizer2(CPUUsePriority, recognizerSampleRate);
@@ -493,7 +498,7 @@ void voice_decoder_VoiceRecognizer_start(int _minBufferSize) {
         assert(recorder == NULL);
 
         //初始化录音机
-        int r = initRecorder(recognizerSampleRate, 2, 16, _minBufferSize, &recorder);
+        int r = initRecorder(recognizerSampleRate, 1, 16, _minBufferSize, &recorder);
         if (r != 0) {
             printf("recorder init error:%d\n", r);
             return;

@@ -599,6 +599,17 @@ bool mrl_decode(struct MyRecognitionListener *_this, int *indexs, int signalLen)
 	}
 }
 
+/**
+ * 
+ * @param _this
+ * @param _sampleRate
+ * @param _channel
+ * @param _bits
+ * @param _bufferSize
+ * @param _overlap
+ * @return
+ */
+
 struct FFTVoiceProcessor *fvp_init(struct FFTVoiceProcessor *_this, 
 	int _sampleRate, int _channel, int _bits, int _bufferSize, int _overlap)
 {
@@ -1405,6 +1416,7 @@ long long vdSampleIdx = 0;
 void vd_process(struct VoiceProcessor *this_, struct VoiceEvent *_event)
 {
 	struct VolumeDetector *_this = (struct VolumeDetector *)this_;
+	FUNC_START
 	_this->hasNewSignal = false;
 	_this->eventIdx ++;
 
@@ -1507,6 +1519,7 @@ void vd_process(struct VoiceProcessor *this_, struct VoiceEvent *_event)
 			}
 		}
 	}
+	FUNC_END
 }
 
 void vd_setFreqs(struct VoiceProcessor *this_, int _freqsIdx, int* _freqs)
@@ -1820,6 +1833,17 @@ void sd_process(struct VoiceProcessor *this_, struct VoiceEvent *_event)
 	FUNC_END
 }
 
+
+/**
+ * 声音预处理器
+ * @param _this
+ * @param _sampleRate
+ * @param _channel
+ * @param _bits
+ * @param _bufferSize
+ * @param _overlap
+ * @return
+ */
 struct PreprocessVoiceProcessor *pvp_init(struct PreprocessVoiceProcessor *_this, int _sampleRate, int _channel, int _bits, int _bufferSize, int _overlap)
 {
 	struct SignalAnalyserVoiceProcessor *realProcessor = NULL;
@@ -2530,6 +2554,7 @@ inline void vevent_reset(struct VoiceEvent *_this, struct BufferData *_data)
 	_this->data = _data;
 }
 
+
 #if defined(_DEBUG) && defined(SEARCH_SIMILAR_SIGNAL)
 struct TimeRangeSignal *genSignals(int *_returnSignalLen, struct SignalBlock *_blocks, int *_returnBlockCount)
 {
@@ -2602,7 +2627,7 @@ void test_loopBlock()
 	printf("loop crc check:%d\n", crcCheck>0);
 }
 
-int main33(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
 	test_loopBlock();
 }

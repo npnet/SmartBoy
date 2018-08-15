@@ -109,7 +109,7 @@ void recorderCallback(void *context,void *data, int len,int err_code)
 
     FUNC_START
 //写到一个文件
-#if 1
+#if 0
 #define OUT_PCM_NAME "1.pcm"
 
     if (SUCCESS == err_code) {
@@ -129,7 +129,10 @@ void recorderCallback(void *context,void *data, int len,int err_code)
     //typedef int (*r_pwrite)(void *_writer, const void *_data, unsigned long _sampleCout);
 //    recorder->write(recorder->writer, recorder->recordingBuffer, recorder->recordingBufFrames);
     //对应recorderShortWrite
-    recorder->rPwrite(recorder->writer,recorder->buffer,conf.rate);
+   // recorder->rPwrite(recorder->writer,recorder->buffer,conf.rate);
+    //这地方得注意
+    LOG("传入识别引擎数据长度len=%d\n",len);
+    recorder->rPwrite(recorder->writer,recorder->buffer,len);
 
 
 #endif
@@ -140,7 +143,7 @@ void recorderCallback(void *context,void *data, int len,int err_code)
 int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _bufferSize, void **_precorder){
     char sound_device_name[256];
     int card=0;
-    int device=0;
+    int device=1;
     memset(&conf,0,sizeof(conf));
     snprintf(sound_device_name, sizeof(sound_device_name), "hw:%u,%u", card, device);
 
@@ -148,7 +151,7 @@ int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _buffer
     conf.channels=channels;
     strcpy(conf.device_name,sound_device_name);
     conf.period_count=4;
-    conf.period_size=512;
+    conf.period_size=64;
 #ifdef D_RECORD
     //每次采样多少位
     header.bits_per_sample =16;
@@ -170,13 +173,12 @@ static void *QueueReadThread(void *param) {
     RecordData *record = (RecordData *) param;
     FUNC_START
     int readLen = 0;
-    //printf("QueueReadThread record :%x\n", record);
+
     while (record->runing) {
         char *data_buff = NULL;
         readLen = queue_read(record->queue, &data_buff);
         LOG("从队列读出数据长度readLen=%d\n", readLen);
         if (readLen<=0) {
-            //printf("queue_read readLen = 0\n");
             usleep(16000);
             continue;
         }
@@ -190,7 +192,7 @@ static void *QueueReadThread(void *param) {
         record->cb(record,data_buff, readLen, 0);
         free(data_buff);
     }
-    printf("QueueReadThread end \n");
+
     FUNC_END
     return NULL;
 }
@@ -202,7 +204,6 @@ static void *RecordThread(void *param) {
     int i=0,j=0;
 
     FUNC_START
-    printf("RecordThread record:%x\n", record);
     /*
     //绑定CPU核
     cpu_set_t mask;
@@ -210,14 +211,14 @@ static void *RecordThread(void *param) {
     CPU_SET(0,&mask);
     ret = sched_setaffinity(0, sizeof(mask), &mask);
      */
-   // char *new_buffer=(char *)malloc(record->buff_size*2);
+    //char *new_buffer=(char *)malloc(record->buff_size*2);
     char *new_buffer=(char *)malloc(record->buff_size);
-    LOG("new_buffer size=%d\n",record->buff_size*2);
+    LOG("分配读取数据缓冲：new_buffer size=%d\n",record->buff_size);
     //LOG("sched_setaffinity return = %d\n", ret);
     while (record->runing) {
         ret = snd_pcm_readi(record->handle, record->buffer, record->frames);
-        printf("snd_pcm_readi return = %d\n", ret);
-        LOG("从设备读出数据长度=%d\n",ret);
+
+        LOG("从设备读出多少帧数据snd_pcm_readi=%d\n",ret);
         if (ret == -EPIPE) {
             /* EPIPE means overrun */
             LOG("overrun occurred\n");
@@ -248,9 +249,27 @@ static void *RecordThread(void *param) {
         }
 //==========
 #else
-         LOG("往队列写入数据长度=%d\n",record->buff_size);
-         queue_write(record->queue, record->buffer, ret);
-        //queue_write(record->queue, record->buffer, record->buff_size *2);
+        // LOG("往队列写入数据长度=%d\n",record->buff_size);
+#if 0
+        for(i=0;i<record->buff_size;i++){
+            new_buffer[i]=(record->buffer)[i];
+        }
+        if(queue_write(record->queue, new_buffer, record->buff_size ) < 0){
+            LOG("RecordThread write error\n");
+            usleep(30*1000);
+            queue_write(record->queue, new_buffer, record->buff_size );
+        }
+#else
+
+        //通道channels=2,采样位数为16,那么写入数据应该为帧数×channelsx16/8
+        //LOG("往队列写入数据长度=%d\n",ret*4);
+        //queue_write(record->queue, record->buffer, ret*4);
+
+        //通道channels=1,采样位数为16,那么写入数据应该为帧数×1x16/8
+        LOG("往队列写入数据长度=%d\n",ret*2);
+        queue_write(record->queue, record->buffer, ret*2);
+
+#endif
 #endif
     }
     if(new_buffer != NULL){
@@ -258,7 +277,7 @@ static void *RecordThread(void *param) {
         new_buffer = NULL;
     }
 
-    printf("RecordThread end\n");
+
     FUNC_END
     return NULL;
 }
@@ -267,7 +286,7 @@ static void *RecordThread(void *param) {
  * 开始录音
  *@_writer :VoiceRecognizer
  ************************************************************************/
- int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
+int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
     int rc;
     int ret;
     int val;
@@ -366,7 +385,7 @@ static void *RecordThread(void *param) {
     record->runing = 1;
 
     //创建录音线程和队列线程
-    LOG("record_start record :%x\n", record);
+    //LOG("record_start record :%x\n", record);
     ret=pthread_create(&record->tid_pcm_read, &thread_attr, RecordThread, (void *) record);
     if(0!=ret){
         LOG("Create RecordThread err\n");

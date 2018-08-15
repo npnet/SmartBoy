@@ -61,3 +61,12 @@ example:
   [0,7] DL1_AWB_Record
   
   ./rec -D 0 -d 2 -c 2 -r 44100 -b 16 -p 1024 -n 4
+
+
+sa_init
+fats_init
+iei_init
+vector_init
+far_init
+fari_init
+bs_init
