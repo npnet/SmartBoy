@@ -395,6 +395,9 @@ void StartAawantServer() {
                     case PKT_SYSTEM_READY_NETCONFIG:
                     {
                         printf("Voice Connect(^-^)\n");
+                        if (voice_socket > 0) {
+                            AAWANTSendPacket(iot_socket, lpInBuffer);
+                        };
                     }
                         break;
                     case PKT_SYSTEM_WAKEUP:

@@ -8,6 +8,8 @@
 #include "../include/voiceRecognizer.h"
 #include "../include/signalAnalyser.h"
 #include "../include/util.h"
+//#include "common.h"
+
 
 #if 1
 struct GeneralRecognitionListener {
@@ -107,6 +109,7 @@ void mrl_onMatchFrequency(struct RecognitionListener *this_, struct SignalAnalys
 }
 
 #endif
+
 
 bool grl_onAfterECC(struct MyRecognitionListener *this_, float _soundTime, int _recogStatus, int *_indexs, int _count) {
     struct GeneralRecognitionListener *_this = (struct GeneralRecognitionListener *) this_;
@@ -291,7 +294,7 @@ VOICERECOGNIZEDLL_API vr_bool vr_isRecognizerStopped(void *_recognizer) {
 VOICERECOGNIZEDLL_API int vr_writeData(void *_recognizer, char *_data, int _dataLen) {
     struct VoiceRecognizer *recognizer = (struct VoiceRecognizer *) _recognizer;
     struct BufferDataWriter *writer = vrr_getBufferWriter(recognizer);
-    LOG("datalen=%d\n",_dataLen);
+    LOG("识别回调写入数据长度datalen=%d\n",_dataLen);
     return bdw_write(writer, _data, _dataLen);
 }
 

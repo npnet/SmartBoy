@@ -144,7 +144,8 @@ int recorderShortWrite(void *_writer, const void *_data, unsigned long _sampleCo
 {
 	char *data = (char *)_data;
 	void *recognizer = _writer;
-	return vr_writeData(recognizer, data, ((int)_sampleCout) * 2);
+	//return vr_writeData(recognizer, data, ((int)_sampleCout) * 2);
+    return vr_writeData(recognizer, data, ((int)_sampleCout) );
 }
 
 int freqs[] = {6500,6700,6900,7100,7300,7500,7700,7900,8100,8300,8500,8700,8900,9100,9300,9500,9700,9900,10100};
@@ -167,8 +168,9 @@ void test_recorderVoiceRecog()
 	
 	vr_setRecognizeFreqs(recognizer, freqs, sizeof(freqs)/sizeof(int));
 	vr_setRecognizerListener(recognizer, NULL, recorderRecognizerStart, recorderRecognizerEnd);
-	//创建录音机	
-	r = initRecorder(sampleRate, 1, 16, 512, &recorder);//要求录取short数据
+	//创建录音机
+    //貌似一通道不成功，只能双通道
+	r = initRecorder(sampleRate, 2, 16, 512, &recorder);//要求录取short数据
 	if(r != 0)
 	{
 		printf("recorder init error:%d", r);
@@ -182,12 +184,10 @@ void test_recorderVoiceRecog()
 		return;
 	}
 	//开始识别
-#ifdef WIN32
-	_beginthread(runRecorderVoiceRecognize, 0, recognizer);
-#else
+
 	pthread_t ntid;
 	pthread_create(&ntid, NULL, runRecorderVoiceRecognize, recognizer);
-#endif
+
 	printf("recognize start !!!\n");	
 	//do 
 	{

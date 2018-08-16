@@ -21,13 +21,7 @@
 #include <signal.h>
 #include <time.h>
 #include <audioRecorder.h>
-#include "AI_PKTHEAD.h"
-#include "AawantData.h"
-//#include "alsa/pcm.h"
-//#include "AIcom_Tool.h"
-//#include "AILogFile.h"
-//#include "AIprofile.h"
-//#include "AIUComm.h"
+
 #include "cJSON.h"
 #include "pthread.h"
 
@@ -36,100 +30,161 @@
 #include "asoundlib.h"
 
 
+#include "AI_PKTHEAD.h"
+#include "AawantData.h"
+#include "AIcom_Tool.h"
+#include "AILogFile.h"
+#include "AIprofile.h"
+#include "AIUComm.h"
+
+
 int					 server_sock;		// 服务器SOCKET
 
-void *VoiConThread(){}
+int wifiStatus;//0:断开 1:连接
 
 
-#if 0
-struct TimeRangeSignal *genSignals(int *_returnSignalLen, struct SignalBlock *_blocks, int *_returnBlockCount)
+const char *recorderRecogErrorMsg(int _recogStatus)
 {
+    char *r = (char *)"unknow error";
+    switch(_recogStatus)
+    {
+        case VR_ECCError:
+            r = (char *)"ecc error";
+            break;
+        case VR_NotEnoughSignal:
+            r = (char *)"not enough signal";
+            break;
+        case VR_NotHeaderOrTail:
+            r = (char *)"signal no header or tail";
+            break;
+        case VR_RecogCountZero:
+            r = (char *)"trial has expires, please try again";
+            break;
+    }
+    return r;
+}
 
-    static struct TimeRangeSignal signals[] =
+//识别开始回调函数
+void recorderRecognizerStart(void *_listener, float _soundTime)
+{
+    printf("------------------recognize start\n");
+}
 
+//识别结束回调函数
+void recorderRecognizerEnd(void *_listener, float _soundTime, int _recogStatus, char *_data, int _dataLen)
+{
+    struct SSIDWiFiInfo wifi;
+    struct WiFiInfo macWifi;
+    int i;
+    enum InfoType it;
+    struct PhoneInfo phone;
+    char s[100];
+   // NetConfig_Info_Data voice;
+    if (_recogStatus == VR_SUCCESS)
+    {
+        enum InfoType infoType = vr_decodeInfoType(_data, _dataLen);
+        if(infoType == IT_PHONE)
+        {
+            printf("%s==>IT_PHONE\n",__FUNCTION__);
+            vr_decodePhone(_recogStatus, _data, _dataLen, &phone);
+            printf("imei:%s, phoneName:%s", phone.imei, phone.phoneName);
+        }
+        else if(infoType == IT_SSID_WIFI)
+        {
+            printf("%s==>IT_SSID_WIFI\n",__FUNCTION__);
+            vr_decodeSSIDWiFi(_recogStatus, _data, _dataLen, &wifi);
+            printf("ssid:%s, pwd:%s\n", wifi.ssid, wifi.pwd);
+        }
+        else if(infoType == IT_STRING)
+        {
+            printf("%s==>IT_STRING\n",__FUNCTION__);
+            vr_decodeString(_recogStatus, _data, _dataLen, s, sizeof(s));
+            printf("string:%s\n", s);
+        }
+        else if(infoType == IT_WIFI)
+        {
+            printf("%s==>IT_WIFI\n",__FUNCTION__);
+            vr_decodeWiFi(_recogStatus, _data, _dataLen, &macWifi);
+            printf("mac wifi:");
+            for (i = 0; i < macWifi.macLen; i ++)
             {
-                    {2, -2, false}, {13, -2, false}, {2, -2, false}, {5, -2, false}, {1, -2, false}, {3, -2, false},
-                    {2, -2, false}, {4, -2, false}, {3, -2, false}, {2, -2, false}, {5, -2, false}, {4, -2, false},
-                    {0, -2, false}, {9, -2, false}, {14, -2, false},
-                    {1, -2, false}, {2, -2, false}, {3, -2, false}, {4, -2, false}, {5, -2, false}, {6, -2, false},
-                    {7, -2, false}, {0, -2, false}, {1, -2, false}, {2, -2, false}, {3, -2, false}, {4, -2, false},
-                    {5, -2, false}, {15, -2, false}, {4, -2, false},
-                    {6, -2, false}, {7, -2, false}, {8, -2, false}, {9, -2, false}, {0, -2, false}, {9, -2, false},
-                    {7, -2, false}, {10, -2, false}, {10, -2, false}, {9, -2, false}, {11, -2, false}
-            };
-    int i, j;
-    *_returnSignalLen = sizeof(signals)/sizeof(struct TimeRangeSignal);
-    for (i = 0; i < *_returnSignalLen; i ++)
-    {
-        for (j = 0; j < MAX_RANGE_IDX_COUNT; j ++)
+                printf("0x%.2x ", macWifi.mac[i] & 0xff);
+            }
+            printf(", %s\n", macWifi.pwd);
+        }
+        else
         {
-            if(signals[i].idxes[j] < -1)break;
-            signals[i].idxes[j] += 1;
+            printf("------------------recognized data:%s\n", _data);
         }
     }
-    _blocks[0].startIdx = 0;
-    _blocks[0].signalCount = 16;
-    _blocks[1].startIdx = 16;
-    _blocks[1].signalCount = 16;
-    _blocks[2].startIdx = 32;
-    _blocks[2].signalCount = 12;
-    *_returnBlockCount = 3;
-    return signals;
-}
-
-void test_loopBlock()
-{
-    int signalLen = 0;
-    struct SignalBlock blocks[MAX_BLOCK_COUNT];
-    int blockCount = 0;
-    struct TimeRangeSignal *signals = genSignals(&signalLen, blocks, &blockCount);
-
-    int crcBuf[MAX_SIGNAL_SIZE];
-    rstype rsBuf[RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE];
-    int crcCheck = 0;
-
-    int i, blockSize, blockIdx;
-    int triedCount = 0, dataLen = 0;
-    for (i = 0; i < signalLen; i ++)
+    else
     {
 
-        blockIdx = i/(RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE);
-        blockSize = ((blockIdx == (blockCount-1) && signalLen%(RS_CORRECT_BLOCK_SIZE + RS_CORRECT_SIZE) > 0)?signalLen%(RS_CORRECT_BLOCK_SIZE + RS_CORRECT_SIZE):(RS_CORRECT_BLOCK_SIZE + RS_CORRECT_SIZE));
-        if (i%(RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE)<blockSize-2)
-        {
-            crcBuf[blockIdx*RS_CORRECT_BLOCK_SIZE+(i%(RS_CORRECT_BLOCK_SIZE+RS_CORRECT_SIZE))] = signals[i].idx1-1;
-        }
+        printf("------------------recognize invalid data, errorCode:%d, error:%s\n", _recogStatus, recorderRecogErrorMsg(_recogStatus));
     }
-    crcCheck = mrl_decode(NULL, crcBuf, signalLen-(blockCount*2));
-    for (i = 0; i<signalLen-(blockCount*2);i ++)
-    {
-        printf("%c", hexChars[crcBuf[i]]);
-    }
-    printf(" init crc check:%d\n", crcCheck);
 
-    memset(crcBuf, 0, sizeof(crcBuf));
-    rsInit();
-    crcCheck = loopBlock(NULL, signals, signalLen, blocks, blockCount, 0, crcBuf, &dataLen, NULL, &triedCount);
-    printf("loop crc check:%d\n", crcCheck>0);
 }
 
-int main(int argc, char* argv[])
+void *runRecorderVoiceRecognize( void * _recognizer)
 {
-    test_loopBlock();
+    vr_runRecognizer(_recognizer);
 }
-#else
 
-int CreateVCThread(){
-    pthread_t keyId;
-    int ret=pthread_create(&keyId,NULL,&VoiConThread,NULL);
-    if(ret<0){
-        printf("create thread fail\n");
-    }
+//录音机回调函数
+int recorderShortWrite(void *_writer, const void *_data, unsigned long _sampleCout)
+{
+    char *data = (char *)_data;
+    void *recognizer = _writer;
+    //return vr_writeData(recognizer, data, ((int)_sampleCout) * 2);
+    return vr_writeData(recognizer, data, ((int)_sampleCout) );
 }
+
+int freqs[] = {6500,6700,6900,7100,7300,7500,7700,7900,8100,8300,8500,8700,8900,9100,9300,9500,9700,9900,10100};
+void RecorderVoiceRecog()
+{
+    void *recorder = NULL;
+    int sampleRate = 44100;
+    //创建识别器，并设置监听器
+    void *recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, sampleRate);
+    int r;
+    char ccc = 0;
+    int i;
+    int baseFreq;
+
+    baseFreq = 16000;
+    for(i = 0; i < sizeof(freqs)/sizeof(int); i ++)
+    {
+        freqs[i] = baseFreq + i * 150;
+    }
+
+    vr_setRecognizeFreqs(recognizer, freqs, sizeof(freqs)/sizeof(int));
+    vr_setRecognizerListener(recognizer, NULL, recorderRecognizerStart, recorderRecognizerEnd);
+    //创建录音机
+    //貌似一通道不成功，只能双通道
+    r = initRecorder(sampleRate, 2, 16, 512, &recorder);//要求录取short数据
+    if(r != 0)
+    {
+        printf("recorder init error:%d", r);
+        return;
+    }
+    //开始录音
+    r = startRecord(recorder, recognizer, recorderShortWrite);//short数据
+    if(r != 0)
+    {
+        printf("recorder record error:%d", r);
+        return;
+    }
+    //开始识别
+    pthread_t ntid;
+    pthread_create(&ntid, NULL, runRecorderVoiceRecognize, recognizer);
+}
+
+
+
 
 int  main(int argc, char *argv[])
 {
-#if 0
+
     char			sService[30],sLog[300],sServerIP[30];
     int				read_sock, numfds;
     fd_set			readmask;
@@ -158,13 +213,11 @@ int  main(int argc, char *argv[])
         return AI_NG;
     };
 
-
-
     // 把本进程的标识送给主进程
     PacketHead stHead;
     memset((char *)&stHead,0,sizeof(PacketHead));
     stHead.iPacketID = PKT_CLIENT_IDENTITY;
-    stHead.iRecordNum = UPGRADE_PROCESS_IDENTITY;
+    stHead.iRecordNum = NETCONFIG_PROCESS_IDENTITY;
     stHead.lPacketSize = sizeof(PacketHead);
     AAWANTSendPacket(server_sock, (char *)&stHead);
 
@@ -174,23 +227,23 @@ int  main(int argc, char *argv[])
     timeout_select.tv_usec = 0;
 
     for(;;) {
-#if 0
+
         FD_ZERO(&readmask);
-        FD_SET(server_sock,&readmask);
+        FD_SET(server_sock, &readmask);
         read_sock = server_sock;
 
         /* 检查通信端口是否活跃 */
-        numfds=select(read_sock+1,(fd_set *)&readmask,0,0,&timeout_select);
+        numfds = select(read_sock + 1, (fd_set *) &readmask, 0, 0, &timeout_select);
 
-        if(numfds<=0) {
+        if (numfds <= 0) {
             continue;
         };
 
         /* 主控程序发来包 */
-        if( FD_ISSET(server_sock, &readmask))	{
-            char *lpInBuffer=AAWANTGetPacket(server_sock, &nError);
-            if(lpInBuffer==NULL) {
-                if(nError == EINTR ||nError == 0) {  /* 因信号而中断 */
+        if (FD_ISSET(server_sock, &readmask)) {
+            char *lpInBuffer = AAWANTGetPacket(server_sock, &nError);
+            if (lpInBuffer == NULL) {
+                if (nError == EINTR || nError == 0) {  /* 因信号而中断 */
                     printf("signal interrupt\n");
                     continue;
                 };
@@ -199,14 +252,21 @@ int  main(int argc, char *argv[])
                 printf("close sock\n");
                 AIEU_TCPClose(server_sock);
 
-
             };
-            PacketHead *pHead = (PacketHead *)lpInBuffer;
-            switch(pHead->iPacketID) {
+            PacketHead *pHead = (PacketHead *) lpInBuffer;
+            switch (pHead->iPacketID) {
 
-                case PKT_UPGRADE_CTRL: {
+                case PKT_SYSTEM_RECEIVE_WIFI_INFO: {
+                    RecorderVoiceRecog();
 
-
+                    break;
+                }
+                case PKT_ROBOT_WIFI_CONNECT:{
+                    wifiStatus=1;
+                    break;
+                }
+                case PKT_ROBOT_WIFI_DISCONNECT:{
+                    wifiStatus=0;
                     break;
                 }
                 default:
@@ -215,46 +275,8 @@ int  main(int argc, char *argv[])
             };
             free(lpInBuffer);
         }/* if( FD_ISSET(IOT_sock, &readmask) ) */
-#else
-        int recordbuf=4096;
-        voice_decoder_VoiceRecognizer_start(recordbuf);
-        voice_decoder_VoiceRecognizer_writeBuf();
-#endif
-    };
-#endif
-    int sampleRate=44100;
-    int freqs[19];
-    int length=sizeof(freqs)/ sizeof(int);
-    int baseFreq = 16000;
-
-    int channelConfig=1;
-   // int audioFormat=PCM_FORMAT_S16_LE;
-    int audioFormat;
-    int bufferSizeInBytes=sampleRate*channelConfig*2;
-
-
-    //LOG("length=%d\n",length);
-
-
-    for(int i = 0; i < length; i ++)
-    {
-        freqs[i] = baseFreq + i * 150;
-    }
-
-
-#if 0
-    initRecorder(sampleRate,channelConfig,audioFormat,bufferSizeInBytes,NULL);
-    startRecord(recorder,writer,pwrite);
-#else
-
-    voice_decoder_VoiceRecognizer_init(sampleRate);
-    voice_decoder_VoiceRecognizer_setFreqs(freqs,length);
-    voice_decoder_VoiceRecognizer_start(bufferSizeInBytes);
-
-#endif
-    while (1){
 
     }
+
 }
 
-#endif

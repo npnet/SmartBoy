@@ -80,36 +80,17 @@ enum
 
 };
 
-/*
-void recorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
-{
 
-    struct AudioRecorderInfo *recorder = (struct AudioRecorderInfo *)context;
-    myassert(bq == recorder->recorderBufferQueue);
 
-    SLresult result;
-    recorder->write(recorder->writer, recorder->recordingBuffer, recorder->recordingBufFrames);
 
-    result = (*recorder->recorderBufferQueue)->Enqueue(recorder->recorderBufferQueue, recorder->recordingBuffer,
-                                                       recorder->recordingBufLen);
-    myassert(SL_RESULT_SUCCESS == result);
-    (void)result;
 
-#ifdef SAVE_PCM_DATA
-    if(gFile != NULL)
-    {
-    	fwrite(recorder->recordingBuffer, recorder->recordingBufLen, 1, gFile);
-    }
-#endif
-}
- */
 
 void recorderCallback(void *context,void *data, int len,int err_code)
 {
 
     FUNC_START
 //写到一个文件
-#if 0
+#if 1
 #define OUT_PCM_NAME "1.pcm"
 
     if (SUCCESS == err_code) {
@@ -123,8 +104,8 @@ void recorderCallback(void *context,void *data, int len,int err_code)
         fwrite(data, len, 1, fp);
         fclose(fp);
     }
-#else
-//
+//#else
+
     RecordData *recorder=(RecordData *)context;
     //typedef int (*r_pwrite)(void *_writer, const void *_data, unsigned long _sampleCout);
 //    recorder->write(recorder->writer, recorder->recordingBuffer, recorder->recordingBufFrames);
@@ -132,7 +113,7 @@ void recorderCallback(void *context,void *data, int len,int err_code)
    // recorder->rPwrite(recorder->writer,recorder->buffer,conf.rate);
     //这地方得注意
     LOG("传入识别引擎数据长度len=%d\n",len);
-    recorder->rPwrite(recorder->writer,recorder->buffer,len);
+    recorder->rPwrite(recorder->writer,data,len);
 
 
 #endif
@@ -151,7 +132,7 @@ int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _buffer
     conf.channels=channels;
     strcpy(conf.device_name,sound_device_name);
     conf.period_count=4;
-    conf.period_size=64;
+    conf.period_size=512;
 #ifdef D_RECORD
     //每次采样多少位
     header.bits_per_sample =16;
@@ -211,8 +192,8 @@ static void *RecordThread(void *param) {
     CPU_SET(0,&mask);
     ret = sched_setaffinity(0, sizeof(mask), &mask);
      */
-    //char *new_buffer=(char *)malloc(record->buff_size*2);
     char *new_buffer=(char *)malloc(record->buff_size);
+    //char *new_buffer=(char *)malloc(record->buff_size);
     LOG("分配读取数据缓冲：new_buffer size=%d\n",record->buff_size);
     //LOG("sched_setaffinity return = %d\n", ret);
     while (record->runing) {
@@ -250,14 +231,16 @@ static void *RecordThread(void *param) {
 //==========
 #else
         // LOG("往队列写入数据长度=%d\n",record->buff_size);
-#if 0
-        for(i=0;i<record->buff_size;i++){
-            new_buffer[i]=(record->buffer)[i];
+#if 1
+        for(i=0,j=0;i<ret*4;i+=4,j+=2){
+            new_buffer[j]=(record->buffer)[i];
+            new_buffer[j+1]=(record->buffer)[i+1];
+
         }
-        if(queue_write(record->queue, new_buffer, record->buff_size ) < 0){
+        if(queue_write(record->queue, new_buffer, ret*4/2 ) < 0){
             LOG("RecordThread write error\n");
             usleep(30*1000);
-            queue_write(record->queue, new_buffer, record->buff_size );
+            queue_write(record->queue, new_buffer, ret*4/2 );
         }
 #else
 
@@ -289,7 +272,7 @@ static void *RecordThread(void *param) {
 int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
     int rc;
     int ret;
-    int val;
+    unsigned int val;
     int dir;
     int size;
     pthread_attr_t thread_attr;
@@ -334,15 +317,15 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
                                  SND_PCM_ACCESS_RW_INTERLEAVED);
 
     //设置音频采集格式
-    snd_pcm_hw_params_set_format(record->handle, params,
-                                 SND_PCM_FORMAT_S16_LE);
+    snd_pcm_hw_params_set_format(record->handle, params,SND_PCM_FORMAT_S16_LE);
+    //snd_pcm_hw_params_set_format(record->handle, params,SND_PCM_FORMAT_S16_BE);
 
     //设置通道
     snd_pcm_hw_params_set_channels(record->handle, params, conf.channels);
 
     //采样率
     val = conf.rate;
-    snd_pcm_hw_params_set_rate_near(record->handle, params, &val, &dir);
+    snd_pcm_hw_params_set_rate_near(record->handle, params, & val,&dir);
 
     //设置每次中断，产生多少帧数据
     frames = conf.period_size;

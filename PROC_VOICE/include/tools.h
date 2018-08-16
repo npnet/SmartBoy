@@ -16,7 +16,7 @@ typedef signed int int32;
 typedef signed short int16;
 
 typedef signed long long int64;
-
+//#define AAWANT_BUG
 #if 1
 #define Myprintf(...)
 #define FUNC_START

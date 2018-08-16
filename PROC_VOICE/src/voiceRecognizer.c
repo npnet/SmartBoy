@@ -1,4 +1,5 @@
 
+
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <PROC_VOICE/include/tools.h>
@@ -106,6 +107,7 @@ struct MyRecognitionListener *mrl_init(struct MyRecognitionListener *_this)
 
 void mrl_onStartRecognition(struct RecognitionListener *_this, float _soundTime)
 {
+    FUNC_START
 }
 
 #define MAX_SIGNAL_SIZE 128
@@ -116,7 +118,8 @@ bool mrl_onStopRecognition(struct RecognitionListener *_this, float _soundTime, 
 	int indexs[MAX_SIGNAL_SIZE];
 	int signalLen = 0;
 	int i;
-	bool eccCheck;	
+	bool eccCheck;
+	FUNC_START
 #ifdef RS_CORRECT
 	asize2_1(_indexs, _count, indexs, MAX_SIGNAL_SIZE, "rsBuf", sizeof(rstype));
 #else
@@ -246,6 +249,7 @@ bool mrl_onStopRecognition(struct RecognitionListener *_this, float _soundTime, 
 		RecogStatus = Status_RecogCountZero;
 	}
 
+	FUNC_END
 	return this_->onAfterECC(this_, _soundTime, RecogStatus, indexs, signalLen);
 }
 
@@ -294,7 +298,7 @@ struct SignalBlock *_blocks, int _blockCount, int _blockIdx,
 	asize7_3(_blocks, _blockCount, _preRealRSBufRealOnly, RS_CORRECT_BLOCK_SIZE + RS_CORRECT_SIZE, _rsBufInBlock, MAX_BLOCK_SIGNAL_COUNT, 
 		_resultBuf, MAX_SIGNAL_SIZE, hexChars, 16, _multiSimilarSignalInBlock, _multiSimilarSignalCountInBlock, _signals, _signalsCount,
 		"blockRSBuf", sizeof(rstype), "rsBuf", sizeof(rstype), "mayErrors", sizeof(char));
-	
+	FUNC_START
 	if (_multiSimilarSignalIdxInBlock >= _multiSimilarSignalCountInBlock)
 	{
 		
@@ -534,7 +538,7 @@ struct SignalBlock *_blocks, int _blockCount, int _blockIdx,
 			if(searched)return searched;
 		}
 	}
-
+FUNC_END
 	return false;
 }
 
@@ -545,6 +549,7 @@ bool mrl_onStopRecognition2(struct RecognitionListener *this_, float _soundTime,
 	int RecogStatus = _recogStatus;
 	int indexs[MAX_SIGNAL_SIZE];
 	int signalLen = _count;
+	FUNC_START
 	if (_recogStatus == Recog_Success)
 	{		
 		if (signalLen <= 4 + RS_CORRECT_SIZE)
@@ -583,24 +588,27 @@ bool mrl_onStopRecognition2(struct RecognitionListener *this_, float _soundTime,
 		RecogStatus = Status_RecogCountZero;
 	}
 
+	FUNC_END
 	return _this->onAfterECC(_this, _soundTime, RecogStatus, indexs, signalLen);
 }
 #endif
 
 bool mrl_decode(struct MyRecognitionListener *_this, int *indexs, int signalLen)
 {
+    FUNC_START
 	if(signalLen-4<=0)return false;
 	else
 	{
 		unsigned short crc16 = calc_crc16(indexs, signalLen-4); 
 		asize1(indexs, signalLen)
 			unsigned short dataCrc16 = ((adata(indexs, signalLen-4) & 0xF) << 12) | ((adata(indexs, signalLen-3) & 0xF) << 8) | ((adata(indexs, signalLen-2) & 0xF) << 4) | (adata(indexs, signalLen-1) & 0xF);
+		FUNC_END
 		return crc16 == dataCrc16;
 	}
 }
 
 /**
- * 
+ *
  * @param _this
  * @param _sampleRate
  * @param _channel
@@ -949,7 +957,7 @@ struct MaybeSignal *msq_currDiscoveryingSignal(struct MaybeSignalQueue *_this)
 	}
 	else
 	{
-		signal = cq_peekBotton(&_this->signalQueue);
+		signal = (struct MaybeSignal*)cq_peekBotton(&_this->signalQueue);
 	}
 	if (signal && signal->discoveryFinished)
 	{
@@ -971,7 +979,7 @@ void msq_endDiscoverySignal(struct MaybeSignalQueue *_this)
 	}
 	else
 	{
-		signal = cq_peekBotton(&_this->signalQueue);
+		signal =(struct MaybeSignal*) cq_peekBotton(&_this->signalQueue);
 	}
 	signal->discoveryFinished = true;
 	signal->endTime = getTickCount2();
@@ -2471,13 +2479,30 @@ int bdw_write(struct BufferDataWriter *_this, char *_data, int _dataLen)
 	char *bufferData;
 	int bufferDataLen;
 FUNC_START
-    LOG("dataLen=%d\n",_dataLen);
+#if 1
+#define OUT_PCM_NAME "2.pcm"
+
+
+
+		FILE *fp = fopen(OUT_PCM_NAME, "ab+");
+		if (NULL == fp) {
+			printf("fopen error\n");
+			//return;
+		}
+		LOG("往文件写入数据长度=%d\n",_dataLen);
+		fwrite(_data, _dataLen, 1, fp);
+		fclose(fp);
+#endif
+
+ //   LOG("dataLen=%d\n",_dataLen);
 	if (_this->writeType == WriteTypeNone)
 	{
+		LOG("writeType == WriteTypeNone")
 		_this->writeType = WriteTypeShort;
 	}
 	if (_this->writeType != WriteTypeShort)
 	{
+		LOG("_this->writeType != WriteTypeShort")
 		throwError("only one type data can write");
 	}
 

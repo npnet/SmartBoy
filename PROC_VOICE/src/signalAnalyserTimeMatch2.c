@@ -839,7 +839,7 @@ int bs_removeWeakestBlock(struct BlockSearcher *_this, int _startBlockIdx, int _
         peaks[i] = sumFIAmplitude(&_this->blockFIs[_startBlockIdx + i]);
         if (_this->blockFIs[_startBlockIdx + i].orderMatchCount == 0)peaks[i] = peaks[i] * 0.1f;
     }
-    minPeakIdx = searchFmin(peaks, _blockCount);
+    minPeakIdx = searchFmin((int *)peaks, _blockCount);
     assert(minPeakIdx >= 0 && minPeakIdx < _blockCount);
     *_removedFI = _this->blockFIs[_startBlockIdx + minPeakIdx];
     for (i = minPeakIdx - 1; i >= 0; i--) {
@@ -2183,7 +2183,7 @@ void sa_analyFFTSignal(struct SignalAnalyser *_this) {
                 bool thisTimeOK = false;
 #ifdef SEARCH_SIMILAR_SIGNAL
                 thisTimeOK = _this->listener->onStopRecognition2(_this->listener, soundTime, recogStatus,
-                                                                 vector_nativep(&_this->similarSignals),
+                                                                 (struct TimeRangeSignal*)vector_nativep(&_this->similarSignals),
                                                                  vector_size(&_this->similarSignals), _this->blocks,
                                                                  _this->blockCount);
 #else

@@ -1,7 +1,7 @@
 //
 // Created by sine on 18-7-21.
 //
-
+//#define  AAWANT_BUG
 #include <assert.h>
 
 #include <string.h>
@@ -273,7 +273,7 @@ void voice_decoder_VoiceRecognizer_setFreqs(int _freqs[]) {
 
 #endif
 
-
+#if 0
 
 
 //识别开始判断(可加入定时器来判断是否识别超时）
@@ -575,3 +575,5 @@ int voice_decoder_VoiceRecognizer_writeBuf(char * _audio, int _dataSize) {
     }
     */
 }
+
+#endif
