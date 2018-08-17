@@ -13,6 +13,7 @@
 #include "AIUComm.h"
 #include "AIEUComm.h"
 #include "AawantData.h"
+#include "unistd.h"
 
 #define  CLIENT_SOCKET_NUM  10
 
@@ -394,9 +395,13 @@ void StartAawantServer() {
 
                     case PKT_SYSTEM_READY_NETCONFIG:
                     {
-                        printf("Voice Connect(^-^)\n");
+                        PacketHead *head = (PacketHead *) lpInBuffer;
+
                         if (voice_socket > 0) {
-                            AAWANTSendPacket(iot_socket, lpInBuffer);
+                            printf("Voice Connect(^-^)\n");
+                            //AAWANTSendPacket(voice_socket, lpInBuffer);
+                            //AAWANTSendPacketHead(voice_socket,head->iRecordNum);
+                            AAWANTSendPacketHead(voice_socket, PKT_SYSTEM_READY_NETCONFIG);
                         };
                     }
                         break;
@@ -405,6 +410,15 @@ void StartAawantServer() {
                         printf("WakeUp(^-^)\n");
                     }
                         break;
+                    case PKT_SYSTEM_RECEIVE_WIFI_INFO:{
+                        struct NetConfig_Info_Data *info;
+                        info = (struct NetConfig_Info_Data *) (lpInBuffer + sizeof(PacketHead));
+                        printf("wifi==>name:%s\n",info->sWifiName);
+                        printf("wifi==>password:%s\n",info->sWiFiPassWd);
+                        printf("wifi==>userId:%s\n",info->sUserID);
+                        sleep(3);
+                        AAWANTSendPacketHead(voice_socket,PKT_NETCONFIG_SUCCESS);
+                    }
                 } /* switch */;
                 free(lpInBuffer);
             }; /* if */

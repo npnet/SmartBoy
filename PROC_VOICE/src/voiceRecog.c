@@ -8,7 +8,7 @@
 #include "../include/voiceRecognizer.h"
 #include "../include/signalAnalyser.h"
 #include "../include/util.h"
-//#include "common.h"
+#include "common.h"
 
 
 #if 1
@@ -110,7 +110,7 @@ void mrl_onMatchFrequency(struct RecognitionListener *this_, struct SignalAnalys
 
 #endif
 
-
+//extern const char DEFAULT_CODE_BOOK[16];
 bool grl_onAfterECC(struct MyRecognitionListener *this_, float _soundTime, int _recogStatus, int *_indexs, int _count) {
     struct GeneralRecognitionListener *_this = (struct GeneralRecognitionListener *) this_;
 
@@ -124,6 +124,7 @@ bool grl_onAfterECC(struct MyRecognitionListener *this_, float _soundTime, int _
         if (_recogStatus == 0) {
             for (; i < MAX_CHARS && i < _count; i++) {
                 adata(chars, i) = adata(DEFAULT_CODE_BOOK, adata(_indexs, i));
+               // adata(chars,i)=DEFAULT_CODE_BOOK[_indexs[i]];
             }
         }
         _this->endListener(_this->listener, _soundTime, _recogStatus, ((_recogStatus == 0) ? chars : NULL), i);

@@ -30,7 +30,7 @@ endif ()
 
 
 ADD_EXECUTABLE(voicon  VoiceConnectService.c)
-TARGET_LINK_LIBRARIES(voicon aawant voiceRecog pthread m asound)
+TARGET_LINK_LIBRARIES(voicon aawant voiceRecog pthread m asound curl)
 
 #ADD_EXECUTABLE(main  main.c )
 #TARGET_LINK_LIBRARIES(main aawant voiceRecog pthread m asound)

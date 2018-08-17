@@ -2479,7 +2479,7 @@ int bdw_write(struct BufferDataWriter *_this, char *_data, int _dataLen)
 	char *bufferData;
 	int bufferDataLen;
 FUNC_START
-#if 1
+#if 0
 #define OUT_PCM_NAME "2.pcm"
 
 

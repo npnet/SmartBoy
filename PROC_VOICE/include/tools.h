@@ -5,7 +5,7 @@
 #ifndef SMARTBOY_TOOLS_H
 #define SMARTBOY_TOOLS_H
 
-
+#include "stdio.h"
 typedef unsigned char uchar;
 typedef unsigned char uint8;
 typedef unsigned short uint16;
@@ -33,7 +33,7 @@ typedef signed long long int64;
 #define LOG(format,...) printf("%s,%d:"format,__FUNCTION__,__LINE__,##__VA_ARGS__);
 #define FUNC_START      printf("============[%s]:Start=============\n",__FUNCTION__);
 #define FUNC_END        printf("============[%s]:End  =============\n",__FUNCTION__);
-#define FUNCTION         printf("============[%s]=============\n",__FUNCTION__);
+#define FUNCTION        printf("============[%s]=============\n",__FUNCTION__);
 
 #endif
 

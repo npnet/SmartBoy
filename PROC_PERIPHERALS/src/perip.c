@@ -110,13 +110,15 @@ int time_exceed(struct timeval start)
     ui8Offset = (currentTime.tv_sec - start.tv_sec)*SEC_TO_USEC + (currentTime.tv_usec - start.tv_usec);
     if (ui8Offset >= LONG_PRESS_DEFAULT_DURATION)
     {
+        FUNC_END
         return True;
     }
     else
     {
+        FUNC_END
         return False;
     }
-    FUNC_END
+
 }
 
 
@@ -358,6 +360,9 @@ static void *key_long_press_thread_routine(void *arg)
                     case KEY_WAKEUP:
 
                         printf("KEY p long press\n");
+                        break;
+                    case KEY_MICMUTE:
+                        AAWANTSendPacketHead(server_sock, PKT_SYSTEM_READY_NETCONFIG);
                         break;
                     default:
                         printf("key long press isn't MUTE/BLUTOOTH/POWER/VOLUME+/VOLUME-\n");
@@ -636,7 +641,7 @@ void *KeyEventMonitorThread2(void *arg)
                                 {
                                     //长按联网配置
                                     printf("long press\n");
-                                    AAWANTSendPacketHead(server_sock, PKT_SYSTEM_READY_NETCONFIG);
+                                   // AAWANTSendPacketHead(server_sock, PKT_SYSTEM_READY_NETCONFIG);
                                 } else{
                                     //短按唤醒
                                     printf("short press,server_sock=%d\n",server_sock);

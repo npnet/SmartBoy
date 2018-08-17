@@ -374,7 +374,23 @@ void test_all() {
                 AAWANTSendPacket(server_sock, PKT_VERSION_UPDATE, (char *) &updata,
                                  sizeof(struct UpdateInfoMsg_Iot_Data));
 
+            } else if(strcmp(word, "voice")==0){
+                PacketHead stPacketHead;
+
+                memset(&stPacketHead, 0, sizeof(PacketHead));
+                //  PKT_BLNS_SYSTEM_STATUS
+
+                stPacketHead.iPacketID = PKT_SYSTEM_READY_NETCONFIG;
+                stPacketHead.lPacketSize = sizeof(PacketHead);
+                stPacketHead.iRecordNum = 1;
+
+                if (AAWANTSendPacket(server_sock, (char *) &stPacketHead) < 0) {
+                    //AIcom_SetErrorMsg(ERROR_SOCKET_WRITE, NULL, NULL);
+                    printf("Send packet err\n");
+                    // return -1;
+                };
             }
+
         }
 
         fflush(stdin);
@@ -503,7 +519,7 @@ int main(int argc, char *argv[]) {
     int nError;
     // 重定向输出
     //nError = SetTraceFile((char *)"TEST",(char *)CONFIG_FILE);
-    test_pthread();
+  //  test_pthread();
     /* 与主进程建立联接 */
     sMsg = AIcom_GetConfigString((char *) "Config", (char *) "Socket", (char *) CONFIG_FILE);
     if (sMsg == NULL) {

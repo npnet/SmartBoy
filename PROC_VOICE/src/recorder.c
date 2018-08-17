@@ -27,7 +27,6 @@ struct pcm_config conf;
 #define ID_FMT  0x20746d66
 #define ID_DATA 0x61746164
 
-
 struct wav_header {
     uint32 riff_id;
     uint32 riff_sz;
@@ -66,7 +65,6 @@ typedef struct _RecordData {
 
 } RecordData;
 
-
 enum
 {
     SUCCESS								= 0,
@@ -80,17 +78,12 @@ enum
 
 };
 
-
-
-
-
-
 void recorderCallback(void *context,void *data, int len,int err_code)
 {
 
     FUNC_START
 //写到一个文件
-#if 1
+#if 0
 #define OUT_PCM_NAME "1.pcm"
 
     if (SUCCESS == err_code) {
@@ -104,7 +97,7 @@ void recorderCallback(void *context,void *data, int len,int err_code)
         fwrite(data, len, 1, fp);
         fclose(fp);
     }
-//#else
+#else
 
     RecordData *recorder=(RecordData *)context;
     //typedef int (*r_pwrite)(void *_writer, const void *_data, unsigned long _sampleCout);
@@ -121,6 +114,8 @@ void recorderCallback(void *context,void *data, int len,int err_code)
 }
 
 
+void *arecorder=NULL;
+
 int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _bufferSize, void **_precorder){
     char sound_device_name[256];
     int card=0;
@@ -133,13 +128,7 @@ int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _buffer
     strcpy(conf.device_name,sound_device_name);
     conf.period_count=4;
     conf.period_size=512;
-#ifdef D_RECORD
-    //每次采样多少位
-    header.bits_per_sample =16;
-    header.byte_rate = (header.bits_per_sample / 8) * conf.channels * conf.rate;
-    header.block_align = conf.channels * (header.bits_per_sample / 8);
-    header.data_id = ID_DATA;
-#endif
+
     LOG("录音设备初始化--->设备名:%s,采样频率=%d,通道=%d,period_count=%d,period_size=%d\n",conf.device_name,conf.rate,
            conf.channels,conf.period_count,conf.period_size);
 
@@ -269,7 +258,7 @@ static void *RecordThread(void *param) {
  * 开始录音
  *@_writer :VoiceRecognizer
  ************************************************************************/
-int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
+int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
     int rc;
     int ret;
     unsigned int val;
@@ -278,7 +267,7 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
     pthread_attr_t thread_attr;
     struct sched_param thread_param;
     snd_pcm_hw_params_t *params;
-    struct VoiceRecognizer *recognizer;
+
 
     snd_pcm_uframes_t frames;
     char *buffer;
@@ -286,12 +275,16 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
     void *audio_queue_buff = NULL;
 
     FUNC_START
-    record = (RecordData *) malloc(sizeof(RecordData));
+    record= (RecordData *) malloc(sizeof(RecordData));
+
     audio_queue_buff = malloc(sizeof(audio_queue_t) + AUDIO_QUEUE_BUFF_LEN + 1);
     if (NULL == record) {
         return -1;
     }
-    memset(record, 0, sizeof(RecordData));
+    arecorder=memset(record, 0, sizeof(RecordData));
+    printf("\nstartRecord in record---地址:%x\n\n", record);
+    printf("\nstartRecord in *record---地址:%x\n\n", *record);
+    printf("\nstartRecord in _recorder---地址:%x\n\n", recorder);
 
     //回调函数
     record->cb = recorderCallback;
@@ -313,12 +306,10 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
 
     /* 设置参数 */
     /* Interleaved mode */
-    snd_pcm_hw_params_set_access(record->handle, params,
-                                 SND_PCM_ACCESS_RW_INTERLEAVED);
+    snd_pcm_hw_params_set_access(record->handle, params,SND_PCM_ACCESS_RW_INTERLEAVED);
 
     //设置音频采集格式
     snd_pcm_hw_params_set_format(record->handle, params,SND_PCM_FORMAT_S16_LE);
-    //snd_pcm_hw_params_set_format(record->handle, params,SND_PCM_FORMAT_S16_BE);
 
     //设置通道
     snd_pcm_hw_params_set_channels(record->handle, params, conf.channels);
@@ -402,9 +393,14 @@ int startRecord(void *_recorder, void *_writer, r_pwrite _pwrite){
  ************************************************************************/
 int stopRecord(void *recorder){
     FUNC_START
-    RecordData *record = (RecordData *) recorder;
-    LOG("\nrecord_stop in record:%x\n\n", record);
+
+    printf("\nrecord_stop in recorder:%x\n\n", recorder);
+   // RecordData *record = (RecordData *) recorder;
+    RecordData *record =(RecordData *) arecorder;
+    printf("\nrecord_stop in record:%x\n\n", record);
+
     if (NULL != record) {
+
         record->runing = 0;
         pthread_join(record->tid_pcm_read, NULL);
         pthread_join(record->tid_queue_read, NULL);
@@ -421,6 +417,8 @@ int stopRecord(void *recorder){
             free(record->buffer);
         }
         free(record);
+    } else{
+        printf("record is null\n");
     }
     FUNC_END
 }
