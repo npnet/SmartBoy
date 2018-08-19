@@ -28,7 +28,7 @@
 
 #include "VoiceConnectIf.h"
 #include "voiceRecog.h"
-#include "asoundlib.h"
+#include "alsa/asoundlib.h"
 
 
 #include "AI_PKTHEAD.h"
@@ -40,7 +40,11 @@
 #include "curl/curl.h"
 //#include <openssl/md5.h>
 
-
+typedef enum{
+    NOTHING=0,
+    RECOGING,
+    FINISH
+}WHATRECOGDOING;
 int server_sock;		// 服务器SOCKET
 
 int wifiStatus;//0:断开 1:连接
@@ -51,10 +55,16 @@ int flags_WiFiPassWd=0;
 int flags_sUserID=0;
 void *recognizer=NULL;
 void *recorder = NULL;
+int regstatus=NOTHING;
+
+pthread_mutex_t reg_mutex;
+pthread_cond_t reg_cond;
 
 #define REQUEST_BIND_PATH  "www.aawant.com/speaker/0.0.1/release/ServiceServlet?serviceId=101"
 #define INTERFACE_VER "72"
 #define DEVICE_NAME "mt8516"
+
+
 
 const char *REPORT_BIND_PATH=REQUEST_BIND_PATH;
 
@@ -112,20 +122,24 @@ int Parse(char * s){
         flags_sUserID=0;
         flags_WiFiPassWd=0;
         flags_sUserID=0;
-
+#if 0
         //停止录音
         r = stopRecord(recorder);
         if(r != 0)
         {
-            printf("recorder stop record error:%d", r);
+            printf("recorder stop record error:%d\n", r);
         }
+        /*
         r = releaseRecorder(recorder);
         if(r != 0)
         {
             printf("recorder release error:%d", r);
         }
+         */
 
         //通知识别器停止，并等待识别器真正退出
+
+        printf("%s,识别器地址=%x\n",__FUNCTION__,recognizer);
 
         vr_stopRecognize(recognizer);
         do
@@ -138,11 +152,38 @@ int Parse(char * s){
         printf("------>recognizer quit\n");
         //销毁识别器
         vr_destroyVoiceRecognizer(recognizer);
+#endif
+         pthread_cond_signal(&reg_cond);
     }
 
     return 0;
 }
 
+
+int a(char *s){
+    cJSON *root = cJSON_Parse(s);
+    if(!root) {
+        printf("get root faild !\n");
+        return -1;
+    }
+    cJSON *status = cJSON_GetObjectItem(root, "status");
+
+    if(!status) {
+        printf("No status !\n");
+        return -1;
+    }
+
+    if(status->valueint==1){
+        cJSON *pushkey = cJSON_GetObjectItem(root, "pushKey");
+        if(!pushkey) {
+            printf("No pushkey !\n");
+            return -1;
+        }
+
+    } else if(status->valueint==0){
+      //  AAWANTSendPacket(server_sock,PKT_ROBOT_BIND_FAILED);
+    }
+}
 /*
  *
  * {"status":1,"tips":"操作成功","notified":0,"bindMac":"00:08:22:D4:82:FB","bindUserId":"449b1ee65cf24876b9bdd7844f3a21f8","bindPushFlag":"449b1ee65cf24876b9bdd7844f3a21f8","pushKey":"JM:471fd8aaae384e6f95c772c57e958e63:449b1ee65cf24876b9bdd7844f3a21f8","name":"mt8516","hardwareId":"1"}
@@ -174,7 +215,7 @@ int COnWriteData(void* buffer, size_t size, size_t nmemb, char * useless)
 /*
  *
  * AAWANTSendPacket(server_sock,PKT_ROBOT_BIND_OK);
- * AAWANTSendPacket(server_sock,PKT_ROBOT_BIND_FAILED);
+ *
 
 */
     return 0;
@@ -247,8 +288,6 @@ typedef struct RequestBindInfo_T{
 }RequestBindInfo;
 
 void RequestBinding(){
-
-
     char pack[256];
 
     uint32 t;
@@ -291,11 +330,11 @@ void RequestBinding(){
 
 
 
-   // sprintf(pack,"%s&hardwareId",//%s&mac=%s&name=%s&pushFlag=%s"&serviceId=%s&time=%s&userId=%s&version=%s",
-   //         REQUEST_BIND_PATH);//,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
+    // sprintf(pack,"%s&hardwareId",//%s&mac=%s&name=%s&pushFlag=%s"&serviceId=%s&time=%s&userId=%s&version=%s",
+    //         REQUEST_BIND_PATH);//,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
 
     sprintf(pack,"%s&hardwareId=%s&mac=%s&name=%s&pushFlag=%s&serviceId=%s&time=%s&userId=%s&version=%s",
-             REPORT_BIND_PATH,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
+            REPORT_BIND_PATH,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
     printf("pack==>%s\n",pack);
     CGet(pack,NULL);
     FUNC_END
@@ -311,7 +350,7 @@ void recorderRecognizerEnd(void *_listener, float _soundTime, int _recogStatus, 
     enum InfoType it;
     struct PhoneInfo phone;
     char s[100];
-   // NetConfig_Info_Data voice;
+    // NetConfig_Info_Data voice;
     if (_recogStatus == VR_SUCCESS)
     {
         enum InfoType infoType = vr_decodeInfoType(_data, _dataLen);
@@ -335,7 +374,6 @@ void recorderRecognizerEnd(void *_listener, float _soundTime, int _recogStatus, 
             if(Parse(s)){
 
             };
-
         }
         else if(infoType == IT_WIFI)
         {
@@ -355,7 +393,6 @@ void recorderRecognizerEnd(void *_listener, float _soundTime, int _recogStatus, 
     }
     else
     {
-
         printf("------------------recognize invalid data, errorCode:%d, error:%s\n", _recogStatus, recorderRecogErrorMsg(_recogStatus));
     }
 
@@ -364,6 +401,35 @@ void recorderRecognizerEnd(void *_listener, float _soundTime, int _recogStatus, 
 void *runRecorderVoiceRecognize( void * _recognizer)
 {
     vr_runRecognizer(_recognizer);
+}
+
+void *ctrlRecorderVoiceRecognize( void * _recognizer)
+{
+    FUNC_START
+    int r=0;
+    while (1) {
+        pthread_mutex_lock(&reg_mutex);
+        pthread_cond_wait(&reg_cond, &reg_mutex);
+        pthread_mutex_unlock(&reg_mutex);
+
+        r = stopRecord(recorder);
+        if(r != 0)
+        {
+            printf("recorder stop record error:%d\n", r);
+        }
+        vr_stopRecognize(recognizer);
+        do {
+            printf("recognizer is quiting\n");
+            sleep(1);
+        } while (!vr_isRecognizerStopped(recognizer));
+
+        printf("------>recognizer quit\n");
+        //销毁识别器
+        vr_destroyVoiceRecognizer(recognizer);
+        break;
+    }
+    regstatus=FINISH;
+    FUNC_END
 }
 
 //录音机回调函数
@@ -382,6 +448,7 @@ void RecorderVoiceRecog()
     int sampleRate = 44100;
     //创建识别器，并设置监听器
     recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, sampleRate);
+    printf("%s,识别器地址=%x\n",__FUNCTION__,recognizer);
     int r;
     char ccc = 0;
     int i;
@@ -393,27 +460,32 @@ void RecorderVoiceRecog()
     {
         freqs[i] = baseFreq + i * 150;
     }
-
-    vr_setRecognizeFreqs(recognizer, freqs, sizeof(freqs)/sizeof(int));
-    vr_setRecognizerListener(recognizer, NULL, recorderRecognizerStart, recorderRecognizerEnd);
     //创建录音机
     //貌似一通道不成功，只能双通道
     r = initRecorder(sampleRate, 2, 16, 512, &recorder);//要求录取short数据
+    //r = initRecorder(recorder,sampleRate, 2, 16, 512);//要求录取short数据
+
     if(r != 0)
     {
         printf("recorder init error:%d", r);
         return;
     }
+
+    vr_setRecognizeFreqs(recognizer, freqs, sizeof(freqs)/sizeof(int));
+    vr_setRecognizerListener(recognizer, NULL, recorderRecognizerStart, recorderRecognizerEnd);
+
     //开始录音
     r = startRecord(recorder, recognizer, recorderShortWrite);//short数据
     if(r != 0)
     {
-        printf("recorder record error:%d", r);
+        printf("startRecord error:%d\n", r);
         return;
     }
     //开始识别
     pthread_t ntid;
+    pthread_t mtid;
     pthread_create(&ntid, NULL, runRecorderVoiceRecognize, recognizer);
+    pthread_create(&mtid, NULL, ctrlRecorderVoiceRecognize, recognizer);
 }
 
 
@@ -432,7 +504,7 @@ int  main(int argc, char *argv[])
     AIcom_ChangeToDaemon();
 
     // 重定向输出
-   // SetTraceFile((char *)"VOICECONNECT",(char *)CONFIG_FILE);
+    // SetTraceFile((char *)"VOICECONNECT",(char *)CONFIG_FILE);
 
     /* 与主进程建立联接 */
     char *sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Socket",(char *)CONFIG_FILE);
@@ -464,6 +536,9 @@ int  main(int argc, char *argv[])
 
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
+
+    reg_mutex=PTHREAD_MUTEX_INITIALIZER;
+    reg_cond=PTHREAD_COND_INITIALIZER;
 
     for(;;) {
 
@@ -497,8 +572,11 @@ int  main(int argc, char *argv[])
             switch (pHead->iPacketID) {
 
                 case PKT_SYSTEM_READY_NETCONFIG:{
-                    printf("PKT_SYSTEM_READY_NETCONFIG\n");
-                    RecorderVoiceRecog();
+                    if(regstatus==NOTHING||regstatus==FINISH) {
+                        printf("PKT_SYSTEM_READY_NETCONFIG\n");
+                        regstatus=RECOGING;
+                        RecorderVoiceRecog();
+                    }
                     break;
                 }
 
@@ -512,6 +590,7 @@ int  main(int argc, char *argv[])
                 case PKT_NETCONFIG_SUCCESS:{
                     printf("start binding\n");
                     RequestBinding();
+
                     break;
                 }
                 case PKT_NETCONFIG_FAILED:{

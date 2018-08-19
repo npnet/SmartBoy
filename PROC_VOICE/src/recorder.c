@@ -116,10 +116,12 @@ void recorderCallback(void *context,void *data, int len,int err_code)
 
 void *arecorder=NULL;
 
-int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _bufferSize, void **_precorder){
+//int initRecorder(void *recorder,int sampleRateInHz, int channels, int _audioFormat, int _bufferSize){
+int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _bufferSize, void **recorder){
     char sound_device_name[256];
     int card=0;
     int device=1;
+    RecordData *record ;
     memset(&conf,0,sizeof(conf));
     snprintf(sound_device_name, sizeof(sound_device_name), "hw:%u,%u", card, device);
 
@@ -132,6 +134,11 @@ int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _buffer
     LOG("录音设备初始化--->设备名:%s,采样频率=%d,通道=%d,period_count=%d,period_size=%d\n",conf.device_name,conf.rate,
            conf.channels,conf.period_count,conf.period_size);
 
+    record= (RecordData *) malloc(sizeof(RecordData));
+    printf("initRecorder in recorder---地址:%x\n", record);
+    *recorder=memset(record, 0, sizeof(RecordData));
+
+    printf("initRecorder in recorder---地址:%x\n", recorder);
     FUNC_END
     return 0;
 
@@ -275,16 +282,22 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
     void *audio_queue_buff = NULL;
 
     FUNC_START
+
+    printf("start,record=%x\n",recorder);
+    record=(RecordData *)recorder;
+    printf("start,record=%x\n",record);
+    /*
     record= (RecordData *) malloc(sizeof(RecordData));
+       recorder=memset(record, 0, sizeof(RecordData));
+    printf("\nstartRecord in record---地址:%x\n\n", record);
+    printf("\nstartRecord in *record---地址:%x\n\n", *record);
+    printf("\nstartRecord in _recorder---地址:%x\n\n", recorder);
+*/
 
     audio_queue_buff = malloc(sizeof(audio_queue_t) + AUDIO_QUEUE_BUFF_LEN + 1);
     if (NULL == record) {
         return -1;
     }
-    arecorder=memset(record, 0, sizeof(RecordData));
-    printf("\nstartRecord in record---地址:%x\n\n", record);
-    printf("\nstartRecord in *record---地址:%x\n\n", *record);
-    printf("\nstartRecord in _recorder---地址:%x\n\n", recorder);
 
     //回调函数
     record->cb = recorderCallback;
@@ -294,7 +307,7 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
     //设置录音参数参数
     rc = snd_pcm_open(&record->handle, conf.device_name, SND_PCM_STREAM_CAPTURE, 0);
     if (rc < 0) {
-        LOG("unable to open pcm device: %s\n", snd_strerror(rc));
+        printf("unable to open pcm device: %s\n", snd_strerror(rc));
         ret = -1;
         goto error;
     }
@@ -326,7 +339,7 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
     /* 把参数写进驱动 */
     rc = snd_pcm_hw_params(record->handle, params);
     if (rc < 0) {
-        LOG("unable to set hw parameters: %s\n",snd_strerror(rc));
+        printf("unable to set hw parameters: %s\n",snd_strerror(rc));
         return -1;
     }
 
@@ -336,7 +349,7 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
     //分配录音缓冲大小
     size = frames * 8;
     record->buff_size = size;
-    LOG("frames=%d,record->buff_size=%d\n", frames, record->buff_size);
+    printf("frames=%d,record->buff_size=%d\n", frames, record->buff_size);
     record->buffer = (char *) malloc(size);
     if (NULL == record->buffer) {
         ret = -1;
@@ -394,10 +407,10 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
 int stopRecord(void *recorder){
     FUNC_START
 
-    printf("\nrecord_stop in recorder:%x\n\n", recorder);
-   // RecordData *record = (RecordData *) recorder;
-    RecordData *record =(RecordData *) arecorder;
-    printf("\nrecord_stop in record:%x\n\n", record);
+    printf("record_stop in recorder:%x\n", recorder);
+    RecordData *record = (RecordData *) recorder;
+    //RecordData *record =(RecordData *) arecorder;
+    printf("record_stop in record:%x\n", record);
 
     if (NULL != record) {
 
@@ -420,6 +433,8 @@ int stopRecord(void *recorder){
     } else{
         printf("record is null\n");
     }
+
+    return 0;
     FUNC_END
 }
 

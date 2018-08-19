@@ -23,6 +23,9 @@ android/iphone/windows/linux声波通讯库
 #include "../include/voiceRecog.h"
 #include "../include/audioRecorder.h"
 
+
+void *recorder = NULL;
+void *recognizer=NULL;
 const char *recorderRecogErrorMsg(int _recogStatus)
 {
 	char *r = (char *)"unknow error";
@@ -151,10 +154,11 @@ int recorderShortWrite(void *_writer, const void *_data, unsigned long _sampleCo
 int freqs[] = {6500,6700,6900,7100,7300,7500,7700,7900,8100,8300,8500,8700,8900,9100,9300,9500,9700,9900,10100};
 void test_recorderVoiceRecog()
 {
-	void *recorder = NULL;
+	//void *recorder = NULL;
 	int sampleRate = 44100;
 	//创建识别器，并设置监听器
-	void *recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, sampleRate);
+	//void *recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, sampleRate);
+	recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, sampleRate);
 	int r;
 	char ccc = 0;
 	int i;
@@ -171,6 +175,7 @@ void test_recorderVoiceRecog()
 	//创建录音机
     //貌似一通道不成功，只能双通道
 	r = initRecorder(sampleRate, 2, 16, 512, &recorder);//要求录取short数据
+//    r = initRecorder(recorder,sampleRate, 2, 16, 512);//要求录取short数据
 	if(r != 0)
 	{
 		printf("recorder init error:%d", r);
