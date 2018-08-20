@@ -1,11 +1,6 @@
 //
 // Created by sine on 18-7-21.
 //
-
-//
-// Created by sine on 18-7-19.
-//
-
 #include "linux/input.h"
 #include "stddef.h"
 #include "stdlib.h"
@@ -38,7 +33,7 @@
 #include "AIprofile.h"
 #include "AIUComm.h"
 #include "curl/curl.h"
-//#include <openssl/md5.h>
+#include "md5.h"
 
 typedef enum{
     NOTHING=0,
@@ -56,6 +51,8 @@ int flags_sUserID=0;
 void *recognizer=NULL;
 void *recorder = NULL;
 int regstatus=NOTHING;
+int  regIsTimeOut=0; //0:没有超时;1:超时
+int isRegCancel=0;//用作判断是否在识别过程中是否有中断信号，0：没有中断;1:有中断信号
 
 pthread_mutex_t reg_mutex;
 pthread_cond_t reg_cond;
@@ -117,11 +114,12 @@ int Parse(char * s){
 
     if(flags_WifiName==1&&flags_WiFiPassWd==1&&flags_sUserID==1){
         printf("Sucess to get wifiInfo\n");
-
+        wifiInfo.sIsTimeOut='0';
         AAWANTSendPacket(server_sock, PKT_SYSTEM_RECEIVE_WIFI_INFO, (char *) &wifiInfo, sizeof(struct MediaStatus_Iot_Data));
         flags_sUserID=0;
         flags_WiFiPassWd=0;
         flags_sUserID=0;
+        regIsTimeOut=0;
 #if 0
         //停止录音
         r = stopRecord(recorder);
@@ -159,8 +157,16 @@ int Parse(char * s){
     return 0;
 }
 
-
-int a(char *s){
+/**
+ *参考数据
+ * {"status":1,"tips":"操作成功","notified":0,"bindMac":"00:08:22:D4:82:FB",
+ * "bindUserId":"449b1ee65cf24876b9bdd7844f3a21f8","bindPushFlag":"449b1ee65cf24876b9bdd7844f3a21f8",
+ * "pushKey":"JM:471fd8aaae384e6f95c772c57e958e63:449b1ee65cf24876b9bdd7844f3a21f8",
+ * "name":"mt8516","hardwareId":"1"}
+ *只提取pushKey
+ *
+ */
+int ParseBindData(char *s){
     cJSON *root = cJSON_Parse(s);
     if(!root) {
         printf("get root faild !\n");
@@ -174,54 +180,73 @@ int a(char *s){
     }
 
     if(status->valueint==1){
+        struct Robot_Binding_Data bindData;
         cJSON *pushkey = cJSON_GetObjectItem(root, "pushKey");
         if(!pushkey) {
             printf("No pushkey !\n");
             return -1;
         }
+        printf("%s,pushkey=%s\n",__FUNCTION__,pushkey->valuestring);
+        strcpy(bindData.sBindID,pushkey->valuestring);
+
+        AAWANTSendPacket(server_sock, PKT_ROBOT_BIND_OK, (char *) &bindData, sizeof(struct Robot_Binding_Data));
+        return 0;
 
     } else if(status->valueint==0){
-      //  AAWANTSendPacket(server_sock,PKT_ROBOT_BIND_FAILED);
+        AAWANTSendPacketHead(server_sock,PKT_ROBOT_BIND_FAILED);
+        return 0;
     }
 }
-/*
- *
- * {"status":1,"tips":"操作成功","notified":0,"bindMac":"00:08:22:D4:82:FB","bindUserId":"449b1ee65cf24876b9bdd7844f3a21f8","bindPushFlag":"449b1ee65cf24876b9bdd7844f3a21f8","pushKey":"JM:471fd8aaae384e6f95c772c57e958e63:449b1ee65cf24876b9bdd7844f3a21f8","name":"mt8516","hardwareId":"1"}
- *只提取pushKey
- *
+
+/**
+ * curl 回调处理
+ * @param buffer
+ * @param size
+ * @param nmemb
+ * @param useless
+ * @return
  */
 int COnWriteData(void* buffer, size_t size, size_t nmemb, char * useless)
 {
     char value[BUFSIZE] = {0};
-    char htvalue[BUFSIZE] = {0};
-    char *v = NULL;
 
     memcpy(value, (char *)buffer, size*nmemb);
     printf("-------%s\n", value);
-    v = strstr(value, "\"data\"");
-    if (NULL != v)
-    {
-        memcpy(htvalue, "{", 1);
-        strcat(htvalue, v);
-        //printf("-------%s\n", htvalue);
-    }
-    else
-    {
-
-    }
-
-
-
-/*
- *
- * AAWANTSendPacket(server_sock,PKT_ROBOT_BIND_OK);
- *
-
-*/
+    ParseBindData(value);
     return 0;
 }
 
+/**
+ * 获取md5的值
+ * @param input
+ * @param output
+ * @return
+ */
+int GetMd5(char  *input,char  *output)
+{
+    MD5_CTX ctx;
+    unsigned  char  md[16];
+    char  buf[33]={ '\0' };
+    char  tmp[3]={ '\0' };
+    int  i;
+    MD5Init(&ctx);
+    MD5Update(&ctx,(unsigned char *)input, strlen ((char *)input));
+    MD5Final(md,&ctx);
+    for( i=0; i<16; i++ ){
+        sprintf (tmp, "%02X" ,md[i]);
+        strcat (buf,tmp);
+    }
+    printf("md5 is %s\n",buf);
+    strcpy(output,buf);
+}
 
+
+/**
+ * 通过curl来处理http get
+ * @param url
+ * @param Response
+ * @return
+ */
 int CGet(const char *url, char * Response)
 {
     CURLcode res;
@@ -246,7 +271,6 @@ int CGet(const char *url, char * Response)
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, COnWriteData);
     }
 
-
     /**
     * 当多个线程都使用超时处理的时候，同时主线程中有sleep或是wait等操作。
     * 如果不设置这个选项，libcurl将会发信号打断这个wait从而导致程序退出。
@@ -259,6 +283,11 @@ int CGet(const char *url, char * Response)
     return res;
 }
 
+
+/**
+ * 获取的当前时间
+ * @return
+ */
 int GetCurrentTime(){
     struct timeval currentTime;
     uint32 ms = 0;
@@ -276,6 +305,43 @@ int GetIfVersion(){
 }
 
 
+void sig_timer(int signo)
+{
+    if(signo == SIGALRM)
+    {
+        printf("time over\n");
+        regIsTimeOut=1;
+        pthread_cond_signal(&reg_cond);
+
+        //exit(0);
+    }
+    else
+        printf("other signal\n");
+}
+
+/**
+ * 开启计时器
+ */
+void StartTimer(){
+    struct itimerval timer = {0};
+    struct sigaction st_sig={0};
+
+    st_sig.sa_handler=sig_timer;
+
+    timer.it_value.tv_sec=20;
+    timer.it_value.tv_usec=10;
+    timer.it_interval.tv_sec=0;
+    timer.it_interval.tv_usec=0;
+
+    if(sigaction(SIGALRM ,&st_sig,NULL) < 0)
+        printf("error to set sig proc\n");
+
+    if(setitimer(ITIMER_REAL,&timer,NULL)<0){
+        printf("set timer err\n");
+    }
+}
+
+
 typedef struct RequestBindInfo_T{
     char hardwareId[256];//Mac地址md5值
     char mac[256];
@@ -287,26 +353,28 @@ typedef struct RequestBindInfo_T{
     char version[256];
 }RequestBindInfo;
 
-void RequestBinding(){
+int RequestBinding(){
     char pack[256];
-
     uint32 t;
+    int rs;
 
-    char md5_mac[17];
-    char md5_hardwareId[17];
     RequestBindInfo info;
     FUNC_START
     memset(&info,0, sizeof(info));
     GetMac(info.mac,"wlan0");
+    //mac--->md5--->hardwareId
+    GetMd5(info.mac,info.hardwareId);
     strcpy(info.version,INTERFACE_VER);
     strcpy(info.name,DEVICE_NAME);
     t=GetCurrentTime();
-    sprintf(info.time,"%d",t);
+    sprintf(info.time,"%u",t);
 
     strcpy(info.userId,wifiInfo.sUserID);
+    //userId--->md5--->pushFlag
+    GetMd5(info.userId,info.pushFlag);
     strcpy(info.serviceId,"101");
-    strcpy(info.pushFlag,"1");
-    strcpy(info.hardwareId,"1");
+
+#if 0
     printf("%s\n",info.mac);
     printf("%s\n",info.version);
     printf("%s\n",info.name);
@@ -315,7 +383,7 @@ void RequestBinding(){
     printf("%s\n",info.serviceId);
     printf("%s\n",info.pushFlag);
     printf("%s\n",info.hardwareId);
-
+#endif
     //strcpy(pack,REPORT_BIND_PATH);
     /*
     strcat(pack,info.hardwareId);
@@ -326,18 +394,19 @@ void RequestBinding(){
     strcat(pack,info.time);
     strcat(pack,info.userId);
     strcat(pack,info.version);
-     */
-
-
-
-    // sprintf(pack,"%s&hardwareId",//%s&mac=%s&name=%s&pushFlag=%s"&serviceId=%s&time=%s&userId=%s&version=%s",
-    //         REQUEST_BIND_PATH);//,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
-
+    */
     sprintf(pack,"%s&hardwareId=%s&mac=%s&name=%s&pushFlag=%s&serviceId=%s&time=%s&userId=%s&version=%s",
             REPORT_BIND_PATH,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
     printf("pack==>%s\n",pack);
-    CGet(pack,NULL);
+    //
+    rs=CGet(pack,NULL);
+    if(rs==28){
+        printf("%s:上报绑定出错,code=%d\n",__FUNCTION__,rs);
+        AAWANTSendPacketHead(server_sock,PKT_ROBOT_BIND_FAILED);
+    }
+
     FUNC_END
+    return rs;
 }
 
 
@@ -395,7 +464,6 @@ void recorderRecognizerEnd(void *_listener, float _soundTime, int _recogStatus, 
     {
         printf("------------------recognize invalid data, errorCode:%d, error:%s\n", _recogStatus, recorderRecogErrorMsg(_recogStatus));
     }
-
 }
 
 void *runRecorderVoiceRecognize( void * _recognizer)
@@ -403,15 +471,33 @@ void *runRecorderVoiceRecognize( void * _recognizer)
     vr_runRecognizer(_recognizer);
 }
 
+
+/**
+ * 这线程开启后处于挂起状态，等待信号来触发
+ * 触发执行的信号有1、识别到信息 ;2、超时
+ * @param _recognizer
+ * @return
+ */
 void *ctrlRecorderVoiceRecognize( void * _recognizer)
 {
     FUNC_START
     int r=0;
+    struct timeval now;
+    struct timespec outtime;
     while (1) {
+#if 1
         pthread_mutex_lock(&reg_mutex);
         pthread_cond_wait(&reg_cond, &reg_mutex);
         pthread_mutex_unlock(&reg_mutex);
+#else
+        gettimeofday(&now,NULL);
+        outtime.tv_sec = now.tv_sec + 20;
+        outtime.tv_nsec = now.tv_usec * 1000;
+        pthread_mutex_lock(&reg_mutex);
+        pthread_cond_timedwait(&reg_cond, &reg_mutex,&outtime);
+        pthread_mutex_unlock(&reg_mutex);
 
+#endif
         r = stopRecord(recorder);
         if(r != 0)
         {
@@ -426,6 +512,16 @@ void *ctrlRecorderVoiceRecognize( void * _recognizer)
         printf("------>recognizer quit\n");
         //销毁识别器
         vr_destroyVoiceRecognizer(recognizer);
+
+        //超时发送
+        if(regIsTimeOut&&(isRegCancel!=1)){
+            strcpy(wifiInfo.sWifiName,"");
+            strcpy(wifiInfo.sWiFiPassWd,"");
+            strcpy(wifiInfo.sUserID,"");
+            wifiInfo.sIsTimeOut='1';
+            AAWANTSendPacket(server_sock, PKT_SYSTEM_RECEIVE_WIFI_INFO, (char *) &wifiInfo, sizeof(struct MediaStatus_Iot_Data));
+        }
+
         break;
     }
     regstatus=FINISH;
@@ -444,7 +540,6 @@ int recorderShortWrite(void *_writer, const void *_data, unsigned long _sampleCo
 int freqs[] = {6500,6700,6900,7100,7300,7500,7700,7900,8100,8300,8500,8700,8900,9100,9300,9500,9700,9900,10100};
 void RecorderVoiceRecog()
 {
-
     int sampleRate = 44100;
     //创建识别器，并设置监听器
     recognizer = vr_createVoiceRecognizer2(MemoryUsePriority, sampleRate);
@@ -486,8 +581,8 @@ void RecorderVoiceRecog()
     pthread_t mtid;
     pthread_create(&ntid, NULL, runRecorderVoiceRecognize, recognizer);
     pthread_create(&mtid, NULL, ctrlRecorderVoiceRecognize, recognizer);
+    StartTimer();
 }
-
 
 
 
@@ -575,18 +670,27 @@ int  main(int argc, char *argv[])
                     if(regstatus==NOTHING||regstatus==FINISH) {
                         printf("PKT_SYSTEM_READY_NETCONFIG\n");
                         regstatus=RECOGING;
+                        isRegCancel=0;
                         RecorderVoiceRecog();
                     }
                     break;
                 }
 
+                case PKT_SYSTEM_QUIT_NETCONFIG:{
+                    isRegCancel=1;
+                    pthread_cond_signal(&reg_cond);
+                    break;
+                }
+
+                /*
+                //voice--->main process
                 case PKT_SYSTEM_RECEIVE_WIFI_INFO: {
                     printf("PKT_SYSTEM_RECEIVE_WIFI_INFO\n");
 
 
                     break;
                 }
-
+                */
                 case PKT_NETCONFIG_SUCCESS:{
                     printf("start binding\n");
                     RequestBinding();
@@ -605,6 +709,7 @@ int  main(int argc, char *argv[])
                     wifiStatus=0;
                     break;
                 }
+
                 default:
                     //WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");printf("upgraded Process : Receive unknown message from Master Process!\n");
                     break;

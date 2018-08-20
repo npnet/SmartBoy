@@ -48,6 +48,7 @@ typedef enum{
 //{"mac":"xxxx","time":1300000000000,"info":"","type":1,"toVersion":2,"nowVersion":1,"model":"mtk6735","updateUrl":"http://www.aawant.com/xxxx.zip","id":"xxxxxx","ids":1}
 
 typedef struct UpgradeReport_T{
+  int firstboot;
   char mac[20];
   int time_t;
   char info[2];
@@ -117,8 +118,9 @@ int WriteUpgradeReportToFile(UpgradeReport *np,char *path){
         return -1;
     }
 
-    snprintf(buf,512,"[UPDATE]\nVersion=%s\nmac=%s\ntime=%d\ninfo=%s\ntype=%d\ntoVersion=%d\nnowVersion=%d\n"
-                     "model=%s\nupdateUrl=%s\nid=%s\nids=%d\n",ver,np->mac,np->time_t,np->info,np->type,
+    np->firstboot=1;
+    snprintf(buf,512,"[UPDATE]\nfirstboot=%d\nVersion=%s\nmac=%s\ntime=%d\ninfo=%s\ntype=%d\ntoVersion=%d\nnowVersion=%d\n"
+                     "model=%s\nupdateUrl=%s\nid=%s\nids=%d\n",np->firstboot,ver,np->mac,np->time_t,np->info,np->type,
              np->toVersion,np->nowVersion,np->model,np->updateUrl,np->id,np->ids);
     len=strlen(buf);
     printf("buf len = %d\n",len);
@@ -147,22 +149,8 @@ int GetCurrentTime(){
 int COnWriteData(void* buffer, size_t size, size_t nmemb, char * useless)
 {
     char value[BUFSIZE] = {0};
-    char htvalue[BUFSIZE] = {0};
-    char *v = NULL;
-
     memcpy(value, (char *)buffer, size*nmemb);
     printf("-------%s\n", value);
-    v = strstr(value, "\"data\"");
-    if (NULL != v)
-    {
-        memcpy(htvalue, "{", 1);
-        strcat(htvalue, v);
-        //printf("-------%s\n", htvalue);
-    }
-    else
-    {
-
-    }
 
     return 0;
 }
@@ -383,8 +371,6 @@ int GetUpgradeInfo(){
     //strcpy(oldUpgReport.ids,oldMsg);
     oldUpgReport.ids=atoi(oldMsg);
 
-
-
     printf("mac=%s\n",oldUpgReport.mac);
     printf("time=%ld\n",oldUpgReport.time_t);
     printf("info=%s\n",oldUpgReport.info);
@@ -395,7 +381,6 @@ int GetUpgradeInfo(){
     printf("nowVersion=%d\n",oldUpgReport.nowVersion);
     printf("toVersion=%d\n",oldUpgReport.toVersion);
     printf("updateUrl=%s\n",oldUpgReport.updateUrl);
-
 
     FUNC_END
 
@@ -438,7 +423,7 @@ void ReportUpgradeResult(UpgradeReport *rp){
     FUNC_START
     cJSON *root=cJSON_CreateObject();
 
-    cJSON_AddItemToObject(root, "mac", cJSON_CreateString(rp->mac));
+    cJSON_AddItemToObject(root,"mac", cJSON_CreateString(rp->mac));
     cJSON_AddItemToObject(root,"time",cJSON_CreateNumber(rp->time_t));
     cJSON_AddItemToObject(root,"info",cJSON_CreateString(rp->info));
     cJSON_AddItemToObject(root,"type",cJSON_CreateNumber(rp->type));
@@ -460,6 +445,7 @@ void ReportUpgradeResult(UpgradeReport *rp){
     */
 
     CPost(rp->updateUrl,cJSON_PrintUnformatted(root),NULL);
+    cJSON_Delete(root);
     FUNC_END
 }
 

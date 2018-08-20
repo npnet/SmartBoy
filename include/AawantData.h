@@ -1,6 +1,6 @@
 /********************************************************************
  * NAME         : AawantData.h
- * FUNCTION     : AAWANT数据包头结构定义 
+ * FUNCTION     : AAWANT数据包头结构定义
  * PROGRAMMED   : aawant
  * DATE(ORG)    : 2018/06/23
  * PROJECT      : aawant
@@ -12,7 +12,6 @@
 #ifndef _AAWANTDATA_H
 #define _AAWANTDATA_H
 
-//#define  CONFIG_FILE  (char *)"/data/etc/aawant.conf"
 #define CONFIG_FILE (char *)"/data/data/etc/aawant.conf"
 #define UPDATE_FILE (char *)"/data/data/etc/update.conf"
 #define BUFSIZE 512
@@ -75,10 +74,13 @@
 #define PKT_SYSTEM_UPGRADE_FAIL      14  //升级失败
 
 //相关子进程 --->主控进程
-#define PKT_SYSTEM_NETWORK_STATUS    15   //询问当前网络状态 
+#define PKT_SYSTEM_NETWORK_STATUS    15   //询问当前网络状态
 
 //外围进程 --->主控进程
 #define PKT_SYSTEM_TB_KEY_VALUE      16  //触控按键键值
+
+//外围进程--->主控进程--->配网进程
+#define PKT_SYSTEM_QUIT_NETCONFIG    17  //退出联网模式
 
 // IOT --->  主控进程 ---> 相关子进程
 #define PKT_ROBOT_WIFI_CHANGE 101 // 更换WIFI
@@ -119,40 +121,40 @@
 /********灯状态控制*******/
 typedef enum {
     //错误状态
-    BLNS_ERROR_STATUS = 401,
+            BLNS_ERROR_STATUS = 401,
 
     //声音控制状态
-    BLNS_VOLUME_STATUS,
+            BLNS_VOLUME_STATUS,
 
     //关闭状态
-    BLNS_OFF_STATUS,
+            BLNS_OFF_STATUS,
 
     //开机状态
-    BLNS_STARTUP_STATUS,
+            BLNS_STARTUP_STATUS,
 
     //唤醒状态
-    BLNS_WAKEUP_STATUS,
+            BLNS_WAKEUP_STATUS,
 
     //从服务器获取信息状态
-    BLNS_GET_SERVER_INFO_STATUS,
+            BLNS_GET_SERVER_INFO_STATUS,
 
     //播报状态
-    BLNS_BROADCAST_STATUS,
+            BLNS_BROADCAST_STATUS,
 
     //播放状态
-    BLNS_PLAY_STATUS,
+            BLNS_PLAY_STATUS,
 
     //网络配置状态
-    BLNS_NET_CONFIG_STATUS,
+            BLNS_NET_CONFIG_STATUS,
 
     //OTA升级状态
-    BLNS_UPDATE_STATUS,
+            BLNS_UPDATE_STATUS,
 
     //测试灯状态
-    BLNS_TEST_STATUS,
+            BLNS_TEST_STATUS,
 
     //其他状态转换成播放状态
-    BLNS_SWITCH_PLAY_STATUS
+            BLNS_SWITCH_PLAY_STATUS
 
 }System_Blns_Status;
 
@@ -160,22 +162,22 @@ typedef enum {
 /********配网状态控制*******/
 typedef enum {
     //connect success
-    NETWORK_CONNECT_SUCCESS = 501,
+            NETWORK_CONNECT_SUCCESS = 501,
 
     //error passwd
-    NETWORK_PASSWD_ERROR,
+            NETWORK_PASSWD_ERROR,
 
     //ap is not exist
-    NETWORK_AP_NOT_EXIST,
+            NETWORK_AP_NOT_EXIST,
 
     //connect time out
-    NETWORK_TIME_OUT,
+            NETWORK_TIME_OUT,
 
     //fail to obtain ip
-    NETWORK_OBTAIN_IP_FAILED,
+            NETWORK_OBTAIN_IP_FAILED,
 
     //network unknow error
-    NETWORK_ERROR_UNKNOW
+            NETWORK_ERROR_UNKNOW
 
 }NetWork_Connect_Status;
 
@@ -184,28 +186,32 @@ typedef enum {
 /********系统当前任务状态*******/
 typedef enum {
     //空闲
-    AAWANT_SYSTEM_IDLE_TASK = 601,
+            AAWANT_SYSTEM_IDLE_TASK = 601,
 
     //播放音乐
-    AAWANT_SYSTEM_AUDIO_TASK,
+            AAWANT_SYSTEM_AUDIO_TASK,
 
     //播放TTS
-    AAWANT_SYSTEM_TTS_TASK,
+            AAWANT_SYSTEM_TTS_TASK,
 
     //播放闹铃
-    AAWANT_SYSTEM_ALARM_TASK,
+            AAWANT_SYSTEM_ALARM_TASK,
 
     //系统正在配置网络
-    AAWANT_SYSTEM_NETCONFIG_TASK,
+            AAWANT_SYSTEM_NETCONFIG_TASK,
 
     //系统正在拾音
-    AAWANT_SYSTEM_MSC_RECOGNIZE,
+            AAWANT_SYSTEM_MSC_RECOGNIZE,
 
     //系统正在请求服务器
-    AAWANT_SYSTEM_REQUEST_SERVLET,
+            AAWANT_SYSTEM_REQUEST_SERVLET,
 
     //系统正在执行指令动作
-    AAWANT_SYSTEM_COMMAND_CONTROL
+            AAWANT_SYSTEM_COMMAND_CONTROL,
+
+    //系统休眠
+            AAWANT_SYSTEM_SLEEP
+
 } System_Task_Status;
 
 
@@ -366,6 +372,7 @@ struct NetConfig_Info_Data
     char sWifiName[BUFSIZE];
     char sWiFiPassWd[BUFSIZE];
     char sUserID[BUFSIZE];
+    char sIsTimeOut;    //0正常 1：超时 …
 };
 
 #endif

@@ -29,11 +29,11 @@ endif ()
 #TARGET_LINK_LIBRARIES(voice pthread m asound)
 
 
-ADD_EXECUTABLE(voicon  VoiceConnectService.c)
-TARGET_LINK_LIBRARIES(voicon aawant voiceRecog pthread m asound curl)
+ADD_EXECUTABLE(ProcNetConfigure  VoiceConnectService.c md5.c )
+TARGET_LINK_LIBRARIES(ProcNetConfigure aawant voiceRecog pthread m asound curl)
 
-#ADD_EXECUTABLE(main  main.c )
-#TARGET_LINK_LIBRARIES(main aawant voiceRecog pthread m asound)
+ADD_EXECUTABLE(main  main.c md5.c)
+TARGET_LINK_LIBRARIES(main aawant voiceRecog pthread m asound)
 
 #ADD_EXECUTABLE(rec test/AudioQueue.c test/record.c test/cae_thread.c)
 #TARGET_LINK_LIBRARIES(rec asound pthread)

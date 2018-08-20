@@ -22,6 +22,8 @@ android/iphone/windows/linuxÉù²¨Í¨Ñ¶¿â
 #include <stdio.h>
 #include "../include/voiceRecog.h"
 #include "../include/audioRecorder.h"
+#include "md5.h"
+#include "string.h"
 
 
 void *recorder = NULL;
@@ -229,11 +231,49 @@ void test_recorderVoiceRecog()
 	vr_destroyVoiceRecognizer(recognizer);
 }
 
+int md5(char  *input,char  *output)
+{
+    MD5_CTX ctx;
+   // char  *data= "123" ;
+    unsigned  char  md[16];
+    char  buf[33]={ '\0' };
+    char  tmp[3]={ '\0' };
+    int  i;
+    MD5Init(&ctx);
+    MD5Update(&ctx,(unsigned char *)input, strlen ((char *)input));
+    MD5Final(md,&ctx);
+    for ( i=0; i<16; i++ ){
+        sprintf (tmp, "%02X" ,md[i]);
+        strcat (buf,tmp);
+    }
+   // printf ( "%s\n" ,buf);
+    strcpy(output,buf);
+}
+
 
 int main(int argc, char* argv[])
 {
-	test_recorderVoiceRecog();
-	
-	return 0;
+	//test_recorderVoiceRecog();
+    /*
+    MD5_CTX ctx;
+     char  *data= "123" ;
+    unsigned  char  md[16];
+    char  buf[33]={ '\0' };
+    char  tmp[3]={ '\0' };
+    int  i;
+    MD5Init(&ctx);
+    MD5Update(&ctx,(unsigned char *)data, strlen ((char *)data));
+    MD5Final(md,&ctx);
+    for ( i=0; i<16; i++ ){
+        sprintf (tmp, "%02X" ,md[i]);
+        strcat (buf,tmp);
+    }
+    printf ( "%s\n" ,buf);*/
+    char  *data= "123" ;
+    char output[256];
+    md5(data,output);
+    printf("%s\n",output);
+    return  0;
+
 }
 	

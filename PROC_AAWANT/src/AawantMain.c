@@ -194,6 +194,12 @@ void StartAawantServer() {
                         if (iot_socket > 0) {
                             AAWANTSendPacket(iot_socket, lpInBuffer);
                         };
+
+#if 1
+                        struct Robot_Binding_Data *bindData;
+                        bindData = (struct Robot_Binding_Data *) (lpInBuffer + sizeof(PacketHead));
+                        printf("pushkey=%s\n",bindData->sBindID);
+#endif
                         break;
                     case PKT_ROBOT_WIFI_CONNECT:    // 收到WIFI联接成功的消息
                         // 转发给IOT进程
@@ -408,16 +414,27 @@ void StartAawantServer() {
                     case PKT_SYSTEM_WAKEUP:
                     {
                         printf("WakeUp(^-^)\n");
+                        AAWANTSendPacketHead(voice_socket,PKT_SYSTEM_QUIT_NETCONFIG);
                     }
                         break;
                     case PKT_SYSTEM_RECEIVE_WIFI_INFO:{
                         struct NetConfig_Info_Data *info;
                         info = (struct NetConfig_Info_Data *) (lpInBuffer + sizeof(PacketHead));
+                        if(info->sIsTimeOut=='0'){
                         printf("wifi==>name:%s\n",info->sWifiName);
                         printf("wifi==>password:%s\n",info->sWiFiPassWd);
                         printf("wifi==>userId:%s\n",info->sUserID);
                         sleep(3);
                         AAWANTSendPacketHead(voice_socket,PKT_NETCONFIG_SUCCESS);
+                        } else if(info->sIsTimeOut=='1'){
+                            printf("配网超时\n");
+                        }
+                        break;
+                    }
+
+                    case PKT_ROBOT_BIND_FAILED:{
+                        printf("PKT_ROBOT_BIND_FAILED\n");
+                        break;
                     }
                 } /* switch */;
                 free(lpInBuffer);
