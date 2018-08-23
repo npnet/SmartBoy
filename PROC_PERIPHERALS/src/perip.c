@@ -30,6 +30,7 @@
 #include <dirent.h>
 
 #include <sys/ioctl.h>
+#include <assert.h>
 
 #define INPUT_DEVICE_PATH "/dev/input"
 #define LED_DEVICE_PATH  "/dev/blns"
@@ -75,7 +76,7 @@ static struct pollfd *gufds;
 static char **gdevice_names;
 static int gnfds;
 static int gwd;
-static pthread_mutex_t gmutex;
+pthread_mutex_t gmutex;
 pthread_cond_t gkeycond;
 static int gKeyPressed = False;
 static int gKeyLongPressed = True;
@@ -83,6 +84,11 @@ static int gKeyValueRecord = 0xFFFF;
 static uint32 glongPressDuration = LONG_PRESS_DEFAULT_DURATION;
 
 static uint8 device_type_nfds[16];
+int ledCmd;
+int ledValue;
+int ledflags;//
+pthread_mutex_t lmutex;
+pthread_cond_t lcond;
 
 #if 1
 static const char * keypad_device_name[] =
@@ -680,6 +686,139 @@ int create_KeyThread(){
 
 #endif
 
+/////////////////////////////////////
+typedef struct RingBuffer_T{
+    void * data;
+    char * rcursor; //读指针
+    char * wcursor; //写指针
+    char * rb_buffer;
+    int cursor;
+    int number;
+    int size;      //缓冲大小
+}RingBuffer;
+
+struct LedData{
+    int flags;
+    int cmd;
+};
+pthread_cond_t pcond=PTHREAD_COND_INITIALIZER;
+pthread_mutex_t pmutex=PTHREAD_MUTEX_INITIALIZER;
+RingBuffer *rb;
+
+RingBuffer *CreateRingBuffer(int size){
+    RingBuffer *rb;
+    rb=(RingBuffer *)malloc(sizeof(RingBuffer)+size);
+    if (rb == NULL) return NULL;
+    rb->size=size;
+    //指向数据部分
+    rb->rb_buffer=(char *)rb+sizeof(RingBuffer);
+    rb->rcursor=rb->rb_buffer;
+    rb->wcursor=rb->rb_buffer;
+    return rb;
+}
+
+
+/**
+ *
+ * @param rb
+ * @param data
+ * @param count:数据大小
+ * @return
+ */
+size_t rb_write(RingBuffer *rb,void *data,size_t count){
+
+    assert(rb!=NULL);
+    assert(data!=NULL);
+//写的数据指针在读数据指针前面，
+    if(rb->wcursor>=rb->rcursor) {
+        if ((rb->size-(rb->wcursor - rb->rb_buffer)) > count) {
+            //if(rb->wcursor)
+            printf("%s:>\n",__FUNCTION__);
+            memcpy(rb->wcursor, data, count);
+            //指针移到下一段数据的地址
+            rb->wcursor = rb->wcursor + count;
+        } else if ((rb->size-(rb->wcursor - rb->rb_buffer)) == count) {
+            printf("%s:==\n",__FUNCTION__);
+            memcpy(rb->wcursor, data, count);
+            rb->wcursor = rb->rb_buffer;
+            //如果指针越界，重新校正
+        } else{
+            printf("%s:<\n",__FUNCTION__);
+            rb->wcursor = rb->rb_buffer;
+            return rb_write(rb,data,count);
+        }
+        //读比写快的情况下,前面有读指针所以必不会越界
+    } else{
+        memcpy(rb->wcursor, data, count);
+        rb->wcursor = rb->wcursor + count;
+    }
+    return count;
+
+}
+
+size_t rb_read(RingBuffer *rb,void *data,int count){
+    assert(rb!=NULL);
+    //读理论上必须比写慢
+    //读指针在写指针前面
+    if(rb->rcursor>=rb->wcursor){
+        if((rb->size-(rb->rcursor-rb->rb_buffer))>count){
+            printf("%s:>\n",__FUNCTION__);
+            memcpy(data,rb->rcursor,count);
+            rb->rcursor=rb->rcursor+count;
+        } else if((rb->size-(rb->rcursor-rb->rb_buffer))==count){
+            printf("%s:==\n",__FUNCTION__);
+            memcpy(data,rb->rcursor,count);
+            rb->rcursor=rb->rb_buffer;
+        } else{
+            printf("%s:<\n",__FUNCTION__);
+            rb->rcursor=rb->rb_buffer;
+            return rb_read(rb,data,count);
+        }
+        //读指针在写指针后面
+    }else {
+
+        memcpy(data,rb->rcursor,count);
+        rb->rcursor=rb->rcursor+count;
+    }
+    return count;
+
+}
+int write_blns(int fd, int data);
+void *Customer(void *arg){
+   // RingBuffer *rb=(RingBuffer *)arg;
+    struct LedData ledData;
+    memset(&ledData,0,sizeof(struct LedData));
+    int sw=0;
+    while (1){
+        printf("Change Led Status\n");
+        pthread_cond_wait(&pcond,&pmutex);
+        rb_read(rb,&ledData,sizeof(struct LedData));
+        printf("LedData:flags=%d,cmd=%d\n",ledData.flags,ledData.cmd);
+        if(ledData.flags==1){
+                   if (ioctl(blns_fd, ledData.cmd, &sw) < 0) {
+                       printf("IOCTL DATA FAIL...\n");
+                   }
+
+        } else if(ledData.flags==2){
+
+            write_blns(blns_fd,ledData.cmd);
+        } else{
+
+        }
+
+    }
+}
+
+void *Productor(void *arg){
+    // RingBuffer *rb=(RingBuffer *)arg;
+
+    while (1){
+
+    }
+}
+///////////////////////////////////////////////
+
+
 int write_blns(int fd, int data)
 {
     int ret = 0;
@@ -700,6 +839,51 @@ int write_blns(int fd, int data)
     }
 
     return ret;
+}
+
+
+void *Led_Ctrl(void *arg){
+    int sw = 0;
+    while (1){
+        pthread_cond_wait(&lcond,&lmutex);
+        printf("Led_Ctrl\n");
+        if(ledflags==1){
+            if(ioctl(blns_fd, ledCmd, &sw) < 0) {
+                printf("IOCTL DATA FAIL...\n");
+            }
+        } else if(ledflags==0){
+            write_blns(blns_fd,ledValue);
+        }
+
+    }
+}
+void LedInit()
+{
+    int ret = 0;
+    int sw=0;
+    pthread_t ledPid;
+    FUNC_START
+    pthread_mutex_init(&lmutex, NULL);
+    pthread_cond_init(&lcond, NULL);
+
+    blns_fd=open(LED_DEVICE_PATH,O_RDWR);
+
+    if(blns_fd<0) {
+        printf("open blns failed\n");
+    } else{
+        printf("blns fd=%d\n",blns_fd);
+    }
+
+    if (ioctl(blns_fd, AW9523B_IO_OFF, &sw) < 0) {
+        printf("IOCTL DATA FAIL...\n");
+    }
+    rb=CreateRingBuffer(sizeof(struct LedData)*6);
+    ret = pthread_create(&ledPid, NULL, Customer, NULL);
+    if (ret != 0)
+    {
+        printf("create Led pthread failed.\n");
+    }
+    FUNC_END
 }
 
 int  main(int argc, char *argv[])
@@ -746,12 +930,7 @@ int  main(int argc, char *argv[])
     timeout_select.tv_sec = 10;
     timeout_select.tv_usec = 0;
 
-    blns_fd=open(LED_DEVICE_PATH,O_RDWR);
-    if(blns_fd<0) {
-        printf("open blns failed\n");
-    } else{
-        printf("blns fd=%d\n",blns_fd);
-    }
+    LedInit();
     create_KeyThread();
     Long_Press_Ctrl();
 
@@ -827,9 +1006,26 @@ int  main(int argc, char *argv[])
                         cmd = AW9523B_IO_SWITCH_PLAY;
                     }
 
+                    /*
                     if (ioctl(blns_fd, cmd, &sw) < 0) {
                         printf("IOCTL DATA FAIL...\n");
                     }
+                    */
+
+#if 0
+                    pthread_mutex_lock(&lmutex);
+                    ledCmd=cmd;
+                    ledflags=1;
+                    pthread_mutex_unlock(&lmutex);
+                    pthread_cond_signal(&lcond);
+#endif
+                    pthread_mutex_lock(&pmutex);
+                    struct LedData ldata;
+                    ldata.cmd=cmd;
+                    ldata.flags=1;
+                    rb_write(rb,&ldata,sizeof(struct LedData));
+                    pthread_mutex_unlock(&pmutex);
+                    pthread_cond_signal(&pcond);
 
                     break;
                 }
@@ -838,9 +1034,18 @@ int  main(int argc, char *argv[])
                     printf("Get PKT_BLNS_VALUE_STATUS \n");
 
                     int led=0;
+                    struct LedData ldata;
+                    int count=0;
                     led = (int ) pHead->iRecordNum;
-                    write_blns(blns_fd,led);
-
+                    //write_blns(blns_fd,led);
+                    pthread_mutex_lock(&pmutex);
+                   // ledValue=led;
+                    //ledflags=0;
+                    ldata.cmd=led;
+                    ldata.flags=2;
+                    rb_write(rb,&ldata,sizeof(struct LedData));
+                    pthread_mutex_unlock(&pmutex);
+                    pthread_cond_signal(&pcond);
 
                 }
                     break;

@@ -14,6 +14,8 @@
 
 char *AIcom_GetConfigString(char *szSection, char *szEntry,char *szFileName);
 char *AIcom_GetConfigString(char *szSection, char *szEntry);
+int AIcom_WriteProfileString(char *szSection,char *szEntry,char *szValue,char *szFileName);
+int AIcom_WriteProfileInt(char *szSection,char *szEntry,int iValue,char *szFileName);
 
 #endif
 

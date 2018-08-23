@@ -99,7 +99,7 @@ static char *AIcom_GetLine(char *szBuf,char *szLine)
  * DATE(ORG)  : 
  * CALL       : 
  ********************************************************************/
-static int AIcom_WriteProfileString(char *szSection,char *szEntry,char *szValue,char *szFileName)
+int AIcom_WriteProfileString(char *szSection,char *szEntry,char *szValue,char *szFileName)
 {
     char *szBuf1,*szBuf2;
     long lFileLen;
@@ -236,7 +236,7 @@ static int AIcom_WriteProfileString(char *szSection,char *szEntry,char *szValue,
  * DATE(ORG): 
  * CALL     : 
  ********************************************************************/
-static int AIcom_WriteProfileInt(char *szSection,char *szEntry,int iValue,char *szFileName)
+int AIcom_WriteProfileInt(char *szSection,char *szEntry,int iValue,char *szFileName)
 {
     char szBuf[10];
 

@@ -119,7 +119,7 @@ int WriteUpgradeReportToFile(UpgradeReport *np,char *path){
     }
 
     np->firstboot=1;
-    snprintf(buf,512,"[UPDATE]\nfirstboot=%d\nVersion=%s\nmac=%s\ntime=%d\ninfo=%s\ntype=%d\ntoVersion=%d\nnowVersion=%d\n"
+    snprintf(buf,512,"[UPDATE]\nFirstBoot=%d\nVersion=%s\nmac=%s\ntime=%u\ninfo=%s\ntype=%d\ntoVersion=%d\nnowVersion=%d\n"
                      "model=%s\nupdateUrl=%s\nid=%s\nids=%d\n",np->firstboot,ver,np->mac,np->time_t,np->info,np->type,
              np->toVersion,np->nowVersion,np->model,np->updateUrl,np->id,np->ids);
     len=strlen(buf);
@@ -230,7 +230,6 @@ int CGet(const char *url, char * Response)
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, COnWriteData);
     }
 
-
     /**
     * 当多个线程都使用超时处理的时候，同时主线程中有sleep或是wait等操作。
     * 如果不设置这个选项，libcurl将会发信号打断这个wait从而导致程序退出。
@@ -255,37 +254,65 @@ int CheckUpgradeResult() {
     UpgradeReport report;
     char oldver[10];
     char nowver[10];
+    char isfb[10];
     int old;
     int now;
+    int first;
     int fd;
     FUNC_START
-    char *oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "Version",(char *) UPDATE_FILE);
-    if (oldMsg == NULL) {
-        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
-        return (AI_NG);
-    };
+    //判断文件是否存在，不存在，判断为没有升级
+    if(access(UPDATE_FILE,0)==0) {
+        char *isFirst = AIcom_GetConfigString((char *) "UPDATE", (char *) "FirstBoot", (char *) UPDATE_FILE);
+        if (isFirst == NULL) {
+            printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+            return 0;
+        };
+        snprintf(isfb, 10, isFirst);
+        first = atoi(isfb);
+        printf("isfb = %d\n", first);
 
-    snprintf(oldver,10,oldMsg);
-    old=atoi(oldver);
-    printf("oldver = %d\n",old);
+        //判断是否启动后第一次启动，如果是,将upate.conf里面的FirstBoot字段设置为0
+        if(first==1)
+        {
+            printf("------This is FirstBoot-----");
+            AIcom_WriteProfileInt((char *) "UPDATE", (char *) "FirstBoot",0, (char *) UPDATE_FILE);
+            FUNC_END
+            return 1;
+#if 0
+            char *oldMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "Version", (char *) UPDATE_FILE);
+            if (oldMsg == NULL) {
+                printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+                return 0;
+            };
 
-    char *nowMsg = AIcom_GetConfigString((char *) "Config", (char *) "Version",(char *) CONFIG_FILE);
-    if (nowMsg == NULL) {
-        printf("Fail to get Version Info in %s!\n", CONFIG_FILE);
-        return (AI_NG);
-    };
-    //strcpy(sService, sMsg);
-    //strcpy(nowver,oldMsg);
-    snprintf(nowver,10,oldMsg);
-    now=atoi(nowver);
-    printf("nowver = %d\n",now);
-    if(now>old){
-        printf("System upgrade finish\n");
-        return 1;
+            snprintf(oldver, 10, oldMsg);
+            old = atoi(oldver);
+            printf("oldver = %d\n", old);
+
+            char *nowMsg = AIcom_GetConfigString((char *) "Config", (char *) "Version", (char *) CONFIG_FILE);
+            if (nowMsg == NULL) {
+                printf("Fail to get Version Info in %s!\n", CONFIG_FILE);
+                return 0;
+            };
+            //strcpy(sService, sMsg);
+            //strcpy(nowver,oldMsg);
+            snprintf(nowver, 10, oldMsg);
+            now = atoi(nowver);
+            printf("nowver = %d\n", now);
+            if (now > old) {
+                printf("System upgrade finish\n");
+                return 0;
+            }
+#endif
+
+        }
+        return 0;
+
+
+    } else{
+        FUNC_END
+        return 0;
     }
-
-    FUNC_END
-    return 0;
 }
 
 int GetUpgradeInfo(){
@@ -395,10 +422,21 @@ void ReportDownloadResult(){
     char strUrl[256];
     char *data="?mac=";
     char strResponse[256];
+    char *sMsg=NULL;
     char mac[17];
     FUNC_START
     memset(strUrl,0,sizeof(strUrl));
-    strcpy(strUrl,A_REPORT_DOWNLOAD_PATH);
+
+
+    sMsg = AIcom_GetConfigString((char *) "UPDATE", (char *) "ids",(char *) UPDATE_FILE);
+    if (sMsg == NULL) {
+        printf("Fail to get Version Info in %s!\n", UPDATE_FILE);
+        strcpy(strUrl,A_REPORT_DOWNLOAD_PATH);
+
+    } else{
+        strcpy(strUrl,sMsg);
+    }
+
     strcat(strUrl,data);
     printf("get==>%s\n",strUrl);
     GetMac(mac,"wlan0");
@@ -525,7 +563,7 @@ void *Do_Download2(void *arg) {
         GetMac(newUpgReport.mac,"wlan0");
 
 
-        WriteUpgradeReportToFile(&newUpgReport,"/data/etc/update.conf");
+        WriteUpgradeReportToFile(&newUpgReport,"/data/data/etc/update.conf");
         SetUpgStage(UPG_STAGE_END);
         //system("reboot");
 #endif
@@ -999,6 +1037,7 @@ int main(int argc, char *argv[]) {
 
     //检查上次运行是否有升级及升级结果
     rs=CheckUpgradeResult();
+    printf("rs=%d\n",rs);
     if(rs) {
         //把升级结果赋值给type
         /*

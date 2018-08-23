@@ -135,6 +135,9 @@ int initRecorder(int sampleRateInHz, int channels, int _audioFormat, int _buffer
            conf.channels,conf.period_count,conf.period_size);
 
     record= (RecordData *) malloc(sizeof(RecordData));
+    if (NULL == record) {
+        return -1;
+    }
     printf("initRecorder in recorder---地址:%x\n", record);
     *recorder=memset(record, 0, sizeof(RecordData));
 
@@ -285,6 +288,9 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
 
     printf("start,record=%x\n",recorder);
     record=(RecordData *)recorder;
+    if (NULL == record) {
+        return -1;
+    }
     printf("start,record=%x\n",record);
     /*
     record= (RecordData *) malloc(sizeof(RecordData));
@@ -295,7 +301,7 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
 */
 
     audio_queue_buff = malloc(sizeof(audio_queue_t) + AUDIO_QUEUE_BUFF_LEN + 1);
-    if (NULL == record) {
+    if(audio_queue_buff==NULL){
         return -1;
     }
 
@@ -309,7 +315,7 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
     if (rc < 0) {
         printf("unable to open pcm device: %s\n", snd_strerror(rc));
         ret = -1;
-        goto error;
+        goto exit;
     }
 
     snd_pcm_hw_params_alloca(&params);
@@ -395,8 +401,6 @@ int startRecord(void *recorder, void *_writer, r_pwrite _pwrite){
     free(audio_queue_buff);
 
     return ret;
-
-
 
     FUNC_END
 }

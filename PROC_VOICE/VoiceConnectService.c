@@ -61,7 +61,7 @@ pthread_cond_t reg_cond;
 #define INTERFACE_VER "72"
 #define DEVICE_NAME "mt8516"
 
-
+char BIND_PATH[256];
 
 const char *REPORT_BIND_PATH=REQUEST_BIND_PATH;
 
@@ -112,7 +112,7 @@ int Parse(char * s){
         flags_sUserID=1;
     }
 
-    if(flags_WifiName==1&&flags_WiFiPassWd==1&&flags_sUserID==1){
+    if(flags_WifiName==1&&flags_WiFiPassWd==1&&flags_sUserID==1&&strlen(wifiInfo.sWifiName)!=0){
         printf("Sucess to get wifiInfo\n");
         wifiInfo.sIsTimeOut='0';
         AAWANTSendPacket(server_sock, PKT_SYSTEM_RECEIVE_WIFI_INFO, (char *) &wifiInfo, sizeof(struct MediaStatus_Iot_Data));
@@ -342,6 +342,22 @@ void StartTimer(){
 }
 
 
+void *timerHandler(void *arg){
+    struct timeval curTime;
+    struct timeval startTime;
+
+    gettimeofday(&startTime,NULL);
+
+    while (regIsTimeOut==0){
+        gettimeofday(&curTime,NULL);
+        if(curTime.tv_sec-startTime.tv_sec>15){
+            regIsTimeOut=1;
+            pthread_cond_signal(&reg_cond);
+        }
+    }
+}
+
+
 typedef struct RequestBindInfo_T{
     char hardwareId[256];//Mac地址md5值
     char mac[256];
@@ -357,6 +373,10 @@ int RequestBinding(){
     char pack[256];
     uint32 t;
     int rs;
+    char *sMsg=NULL;
+    char *sPath=NULL;
+    char *sVer=NULL;
+    char bPath[256];
 
     RequestBindInfo info;
     FUNC_START
@@ -364,8 +384,32 @@ int RequestBinding(){
     GetMac(info.mac,"wlan0");
     //mac--->md5--->hardwareId
     GetMd5(info.mac,info.hardwareId);
-    strcpy(info.version,INTERFACE_VER);
-    strcpy(info.name,DEVICE_NAME);
+
+
+    sVer = AIcom_GetConfigString((char *)"Interface", (char *)"serverVer",(char *)CONFIG_FILE);
+    if(sVer==NULL) {
+        printf("Fail to get Socket in %s!\n", CONFIG_FILE);
+        strcpy(info.version,INTERFACE_VER);
+    } else{
+        strcpy(info.version,sVer);
+    }
+
+    sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Mode",(char *)CONFIG_FILE);
+    if(sMsg==NULL) {
+        printf("Fail to get Socket in %s!\n", CONFIG_FILE);
+        strcpy(info.name,DEVICE_NAME);
+    } else{
+        strcpy(info.name,sMsg);
+    }
+
+    sPath = AIcom_GetConfigString((char *)"Interface", (char *)"server101",(char *)CONFIG_FILE);
+    if(sPath==NULL) {
+        printf("Fail to get Socket in %s!\n", CONFIG_FILE);
+        strcpy(bPath,REQUEST_BIND_PATH);
+    } else{
+        strcpy(bPath,sMsg);
+    }
+
     t=GetCurrentTime();
     sprintf(info.time,"%u",t);
 
@@ -395,8 +439,9 @@ int RequestBinding(){
     strcat(pack,info.userId);
     strcat(pack,info.version);
     */
+
     sprintf(pack,"%s&hardwareId=%s&mac=%s&name=%s&pushFlag=%s&serviceId=%s&time=%s&userId=%s&version=%s",
-            REPORT_BIND_PATH,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
+            bPath,info.hardwareId,info.mac,info.name,info.pushFlag,info.serviceId,info.time,info.userId,info.version);
     printf("pack==>%s\n",pack);
     //
     rs=CGet(pack,NULL);
@@ -538,7 +583,7 @@ int recorderShortWrite(void *_writer, const void *_data, unsigned long _sampleCo
 }
 
 int freqs[] = {6500,6700,6900,7100,7300,7500,7700,7900,8100,8300,8500,8700,8900,9100,9300,9500,9700,9900,10100};
-void RecorderVoiceRecog()
+int RecorderVoiceRecog()
 {
     int sampleRate = 44100;
     //创建识别器，并设置监听器
@@ -548,6 +593,7 @@ void RecorderVoiceRecog()
     char ccc = 0;
     int i;
     int baseFreq;
+    int ret=0;
 
     memset(&wifiInfo,0,sizeof(wifiInfo));
     baseFreq = 16000;
@@ -555,15 +601,16 @@ void RecorderVoiceRecog()
     {
         freqs[i] = baseFreq + i * 150;
     }
+    usleep(110000);
+    StartTimer();
     //创建录音机
     //貌似一通道不成功，只能双通道
     r = initRecorder(sampleRate, 2, 16, 512, &recorder);//要求录取short数据
     //r = initRecorder(recorder,sampleRate, 2, 16, 512);//要求录取short数据
-
     if(r != 0)
     {
         printf("recorder init error:%d", r);
-        return;
+        goto err;
     }
 
     vr_setRecognizeFreqs(recognizer, freqs, sizeof(freqs)/sizeof(int));
@@ -574,14 +621,40 @@ void RecorderVoiceRecog()
     if(r != 0)
     {
         printf("startRecord error:%d\n", r);
-        return;
+      //  exit(0);
+        goto err;
+
     }
     //开始识别
     pthread_t ntid;
     pthread_t mtid;
-    pthread_create(&ntid, NULL, runRecorderVoiceRecognize, recognizer);
+    ret=pthread_create(&ntid, NULL, runRecorderVoiceRecognize, recognizer);
+    if(ret!=0){
+        printf("Create pthread runRecorderVoiceRecognize err\n");
+        goto err;
+    }
+
     pthread_create(&mtid, NULL, ctrlRecorderVoiceRecognize, recognizer);
-    StartTimer();
+    if(ret!=0){
+        printf("Create pthread ctrlRecorderVoiceRecognize err\n");
+        goto err;
+    }
+
+
+    return 0;
+err:
+    regstatus=FINISH;
+    vr_stopRecognize(recognizer);
+    do {
+        printf("recognizer is quiting\n");
+        sleep(1);
+    } while (!vr_isRecognizerStopped(recognizer));
+
+    printf("------>recognizer quit\n");
+    //销毁识别器
+    vr_destroyVoiceRecognizer(recognizer);
+
+    return -1;
 }
 
 
@@ -594,6 +667,7 @@ int  main(int argc, char *argv[])
     fd_set			readmask;
     struct timeval	timeout_select;
     int             nError;
+    int ret;
 
 
     AIcom_ChangeToDaemon();
@@ -667,11 +741,13 @@ int  main(int argc, char *argv[])
             switch (pHead->iPacketID) {
 
                 case PKT_SYSTEM_READY_NETCONFIG:{
+                    printf("PKT_SYSTEM_READY_NETCONFIG1:regstatus=%d\n",regstatus);
                     if(regstatus==NOTHING||regstatus==FINISH) {
-                        printf("PKT_SYSTEM_READY_NETCONFIG\n");
+                        printf("PKT_SYSTEM_READY_NETCONFIG2\n");
                         regstatus=RECOGING;
-                        isRegCancel=0;
-                        RecorderVoiceRecog();
+
+                        ret=RecorderVoiceRecog();
+                        isRegCancel = 0;
                     }
                     break;
                 }
