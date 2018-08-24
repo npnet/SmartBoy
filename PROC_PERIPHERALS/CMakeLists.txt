@@ -14,7 +14,7 @@ INCLUDE_DIRECTORIES(include)
 
 #AUX_SOURCE_DIRECTORY(src DIR_SRCS)
 #ADD_EXECUTABLE(perip ${DIR_SRCS})
-ADD_EXECUTABLE(ProcPerip src/perip.c)
+ADD_EXECUTABLE(ProcPerip src/perip.c src/ringbuffer.c)
 TARGET_LINK_LIBRARIES(ProcPerip aawant pthread )
 
 #INCLUDE_DIRECTORIES(../include)

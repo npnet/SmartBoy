@@ -35,6 +35,8 @@
 #define INPUT_DEVICE_PATH "/dev/input"
 #define LED_DEVICE_PATH  "/dev/blns"
 
+#include "ringbuffer.h"
+
 
 #define ARRAY_SIZE(a) (sizeof (a) / sizeof ((a)[0]))
 #define LONG_PRESS_DEFAULT_DURATION   3000000     //3 seconds
@@ -445,7 +447,7 @@ void *key_event_monitor_thread(void *arg)
 
     while (1)
     {
-        usleep(10000);
+        usleep(20000);
         //pollres > 0,gufds准备好好读、写或出错状态
         pollres = poll(gufds, gnfds, -1);
 
@@ -687,15 +689,6 @@ int create_KeyThread(){
 #endif
 
 /////////////////////////////////////
-typedef struct RingBuffer_T{
-    void * data;
-    char * rcursor; //读指针
-    char * wcursor; //写指针
-    char * rb_buffer;
-    int cursor;
-    int number;
-    int size;      //缓冲大小
-}RingBuffer;
 
 struct LedData{
     int flags;
@@ -705,18 +698,9 @@ pthread_cond_t pcond=PTHREAD_COND_INITIALIZER;
 pthread_mutex_t pmutex=PTHREAD_MUTEX_INITIALIZER;
 RingBuffer *rb;
 
-RingBuffer *CreateRingBuffer(int size){
-    RingBuffer *rb;
-    rb=(RingBuffer *)malloc(sizeof(RingBuffer)+size);
-    if (rb == NULL) return NULL;
-    rb->size=size;
-    //指向数据部分
-    rb->rb_buffer=(char *)rb+sizeof(RingBuffer);
-    rb->rcursor=rb->rb_buffer;
-    rb->wcursor=rb->rb_buffer;
-    return rb;
-}
 
+
+#if 0
 
 /**
  *
@@ -783,6 +767,8 @@ size_t rb_read(RingBuffer *rb,void *data,int count){
     return count;
 
 }
+#endif
+
 int write_blns(int fd, int data);
 void *Customer(void *arg){
    // RingBuffer *rb=(RingBuffer *)arg;
@@ -809,13 +795,7 @@ void *Customer(void *arg){
     }
 }
 
-void *Productor(void *arg){
-    // RingBuffer *rb=(RingBuffer *)arg;
 
-    while (1){
-
-    }
-}
 ///////////////////////////////////////////////
 
 
@@ -934,6 +914,7 @@ int  main(int argc, char *argv[])
     create_KeyThread();
     Long_Press_Ctrl();
 
+    static int x=0;
     for(;;) {
         if(server_sock==NULL){
             printf("server_sock is null\n");
@@ -945,9 +926,12 @@ int  main(int argc, char *argv[])
         /* 检查通信端口是否活跃 */
         numfds=select(read_sock+1,(fd_set *)&readmask,0,0,&timeout_select);
 
+
+        usleep(20000);
         if(numfds<=0) {
             continue;
         };
+
 
         /* 主控程序发来包 */
         if( FD_ISSET(server_sock, &readmask))	{
@@ -1019,12 +1003,12 @@ int  main(int argc, char *argv[])
                     pthread_mutex_unlock(&lmutex);
                     pthread_cond_signal(&lcond);
 #endif
-                    pthread_mutex_lock(&pmutex);
+                   // pthread_mutex_lock(&pmutex);
                     struct LedData ldata;
                     ldata.cmd=cmd;
                     ldata.flags=1;
                     rb_write(rb,&ldata,sizeof(struct LedData));
-                    pthread_mutex_unlock(&pmutex);
+                   // pthread_mutex_unlock(&pmutex);
                     pthread_cond_signal(&pcond);
 
                     break;
@@ -1038,13 +1022,13 @@ int  main(int argc, char *argv[])
                     int count=0;
                     led = (int ) pHead->iRecordNum;
                     //write_blns(blns_fd,led);
-                    pthread_mutex_lock(&pmutex);
+                   // pthread_mutex_lock(&pmutex);
                    // ledValue=led;
                     //ledflags=0;
                     ldata.cmd=led;
                     ldata.flags=2;
                     rb_write(rb,&ldata,sizeof(struct LedData));
-                    pthread_mutex_unlock(&pmutex);
+                   // pthread_mutex_unlock(&pmutex);
                     pthread_cond_signal(&pcond);
 
                 }
