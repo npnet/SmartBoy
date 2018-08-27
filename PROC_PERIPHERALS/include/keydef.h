@@ -21,16 +21,29 @@ typedef uint8  boolean;
 #define False (0)
 
 
-#define PRINTF_DEBUG
-#ifdef PRINTF_DEBUG
-#define mprintf(...)  printf(__VA_ARGS__)
-#define FUNC_START printf("======[%s:START]======\n",__FUNCTION__);
-#define FUNC_END   printf("======[%s:END]======\n",__FUNCTION__);
-#else
-#define  mprintf(...)
+#if 0
+#define Myprintf(...)
 #define FUNC_START
 #define FUNC_END
+#define LOG(format,...)
+#define FUNC_START
+#define FUNC_END
+#define FUNCTION
+
+
+#else
+#define Myprintf(format,...)    printf("%s,%d==>"format,__FUNCTION__,__LINE__,##__VA_ARGS__);
+#define qWiFiDebug(format, ...) qDebug("[WiFi] "format" File:%s, Line:%d, Function:%s", ##__VA_ARGS__, __FILE__, __LINE__ , __FUNCTION__);
+//#define LOG(format,...) printf("%s,%d:"format,__FUNCTION__,__LINE__,##__VA_ARGS__);
+#define LOG(format,...) { char	sNow[20]; ReturnNowTime(sNow);printf("[%s][%s][%d]:"format,sNow,__FUNCTION__,__LINE__,##__VA_ARGS__);}
+#define FUNC_START      printf("============[%s]:Start=============\n",__FUNCTION__);
+#define FUNC_END        printf("============[%s]:End  =============\n",__FUNCTION__);
+#define FUNCTION        printf("============[%s]=============\n",__FUNCTION__);
+
 #endif
+
+
+
 
 #ifndef NULL
 #ifdef __cplusplus

@@ -92,6 +92,32 @@ int ledflags;//
 pthread_mutex_t lmutex;
 pthread_cond_t lcond;
 
+int WLog(char *sLogString)
+{
+    FILE	*LogFile;
+    char	*pPath;
+    char	sFullFileName[100];
+    char	sNow[20];
+/*
+    pPath = AIcom_GetConfigString((char *)"Path",(char *)"Log");
+    if(pPath==NULL) {
+        return AI_NG;
+    };
+*/
+    sprintf(sFullFileName,"%s/%s","/data/data/log","PERIP");
+    LogFile=fopen(sFullFileName,"a");
+    if(LogFile==NULL) {
+        return(AI_NG);
+    };
+
+    ReturnNowTime(sNow);
+    fprintf(LogFile, "%s(%s)\n", sLogString, sNow);
+
+    fclose(LogFile);
+
+    return(AI_OK);
+}
+
 #if 1
 static const char * keypad_device_name[] =
 {
@@ -139,7 +165,7 @@ static int is_keypad_device( char *filename)
     FUNC_START
     for (i = 0; i < (int) ARRAY_SIZE(keypad_device_name); i++)
     {
-        printf("check device name: %s v.s. %s \n", filename, keypad_device_name[i]);
+        LOG("check device name: %s v.s. %s \n", filename, keypad_device_name[i]);
         strpos = strcasestr(filename, keypad_device_name[i]);
         if (strpos != NULL)
         {
@@ -167,17 +193,17 @@ static int open_device(const char *device)
             fd = open(device, O_RDWR);
     if (fd < 0)
     {
-        printf("could not open %s, %s\n", device, strerror(errno));
+        LOG("could not open %s, %s\n", device, strerror(errno));
         return -1;
     }
     if (ioctl(fd, EVIOCGVERSION, &version))
     {
-        printf("could not get driver version for %s, %s\n", device, strerror(errno));
+        LOG("could not get driver version for %s, %s\n", device, strerror(errno));
         return -1;
     }
     if (ioctl(fd, EVIOCGID, &id))
     {
-        printf("could not get driver id for %s, %s\n", device, strerror(errno));
+        LOG("could not get driver id for %s, %s\n", device, strerror(errno));
         return -1;
     }
     name[sizeof(name) - 1] = '\0';
@@ -187,7 +213,7 @@ static int open_device(const char *device)
     {
         name[0] = '\0';
     }
-    printf("device=%s,open_device_name=%s \n", device,name);
+    LOG("device=%s,open_device_name=%s \n", device,name);
 
     if (ioctl(fd, EVIOCGPHYS(sizeof(location) - 1), &location) < 1)
     {
@@ -200,14 +226,14 @@ static int open_device(const char *device)
     new_ufds = (struct pollfd*)realloc(gufds, sizeof(gufds[0]) * (gnfds + 1));
     if (NULL == new_ufds)
     {
-        printf("out of memory\n");
+        LOG("out of memory\n");
         return -1;
     }
     gufds = new_ufds;
     new_device_names = (char**)realloc(gdevice_names, sizeof(gdevice_names[0]) * (gnfds + 1));
     if (NULL == new_device_names)
     {
-        printf("out of memory\n");
+        LOG("out of memory\n");
         return -1;
     }
     gdevice_names = new_device_names;
@@ -237,7 +263,7 @@ int close_device(const char *device)
         if (!strcmp(gdevice_names[i], device))
         {
             int count = gnfds - i - 1;
-            printf(("remove device %d: %s\n", i, device));
+            LOG("remove device %d: %s\n", i, device);
             free(gdevice_names[i]);
             memmove(gdevice_names + i, gdevice_names + i + 1, sizeof(gdevice_names[0]) * count);
             memmove(gufds + i, gufds + i + 1, sizeof(gufds[0]) * count);
@@ -245,7 +271,7 @@ int close_device(const char *device)
             return 0;
         }
     }
-    printf("remote device: %s not found\n", device);
+    LOG("remote device: %s not found\n", device);
     FUNC_END
     return -1;
 }
@@ -267,7 +293,7 @@ static int read_notify(const char *dirname, int nfd)
         {
             return 0;
         }
-        printf("could not get event, %s\n", strerror(errno));
+        LOG("could not get event, %s\n", strerror(errno));
         return 1;
     }
 
@@ -323,7 +349,7 @@ static int scan_dir(const char *dirname)
             continue;
         }
         strcpy(filename, de->d_name);
-        printf("open_device %s\n",devname);
+        LOG("open_device %s\n",devname);
         open_device(devname);
     }
     closedir(dir);
@@ -358,7 +384,7 @@ static void *key_long_press_thread_routine(void *arg)
             if (time_exceed(start))
             {
                 /* key long press process */
-                printf("key long press process,KeyValueRecord = %d\n",gKeyValueRecord);
+                LOG("key long press process,KeyValueRecord = %d\n",gKeyValueRecord);
                 gKeyLongPressed = True;
                 gKeyPressed = False; //add by lei.xiao
 
@@ -367,21 +393,21 @@ static void *key_long_press_thread_routine(void *arg)
 
                     case KEY_WAKEUP:
 
-                        printf("KEY p long press\n");
+                        LOG("KEY p long press\n");
                         break;
                     case KEY_MICMUTE:
                         AAWANTSendPacketHead(server_sock, PKT_SYSTEM_READY_NETCONFIG);
                         break;
                     default:
-                        printf("key long press isn't MUTE/BLUTOOTH/POWER/VOLUME+/VOLUME-\n");
+                        LOG("key long press isn't MUTE/BLUTOOTH/POWER/VOLUME+/VOLUME-\n");
                         break;
                 }
 
-                printf("long key=%d\n", gKeyValueRecord);
+                LOG("long key=%d\n", gKeyValueRecord);
 
                 if (0 != i4_ret)
                 {
-                    printf("[lei]end long key to sm fail(%d)!!\n", i4_ret);
+                    LOG("[lei]end long key to sm fail(%d)!!\n", i4_ret);
                 }
             }
         }
@@ -406,7 +432,7 @@ void Long_Press_Ctrl()
     ret = pthread_create(&key_long_press_thread, &attr, key_long_press_thread_routine, NULL);
     if (ret != 0)
     {
-        printf("create key pthread failed.\n");
+        LOG("create key pthread failed.\n");
     }
     FUNC_END
 }
@@ -437,12 +463,12 @@ void *key_event_monitor_thread(void *arg)
     gwd = inotify_add_watch(gufds[0].fd, INPUT_DEVICE_PATH, IN_DELETE | IN_CREATE);
     if (gwd < 0)
     {
-        printf("could not add watch for %s, %s\n", INPUT_DEVICE_PATH, strerror(errno));
+        LOG("could not add watch for %s, %s\n", INPUT_DEVICE_PATH, strerror(errno));
     }
     res = scan_dir(INPUT_DEVICE_PATH);
     if (res < 0)
     {
-        printf("scan dir failed for %s\n", INPUT_DEVICE_PATH);
+        LOG("scan dir failed for %s\n", INPUT_DEVICE_PATH);
     }
 
     while (1)
@@ -462,14 +488,14 @@ void *key_event_monitor_thread(void *arg)
                 if(gufds[i].revents & POLLIN) {
                     res = read(gufds[i].fd, &event, sizeof(event));
                     if (res < (int) sizeof(event)) {
-                        printf("could not get event\n");
+                        LOG("could not get event\n");
                     }
 
                     /**
                      * 按键处理
                      */
                     if (KEYPAD_DEVICE_TYPE == device_type_nfds[i] && EV_KEY == event.type) {
-                        //printf("KeyValueRecord=%d \n",KeyValueRecord);
+                        //LOG("KeyValueRecord=%d \n",KeyValueRecord);
                         /**
                          * 按键按下处理
                          */
@@ -477,8 +503,8 @@ void *key_event_monitor_thread(void *arg)
                         {
                             if ((KEY_WAKEUP == event.code || KEY_VOLUMEUP == event.code ||
                                  KEY_POWER == event.code) && KEY_RECORD_MASK == gKeyValueRecord) {
-                                mprintf("[%s]==>key code=%d,value%d\n", __FUNCTION__, event.code, event.value);
-//                              printf("<user_interface> key code = %d (%s), value = %d \n",
+                                LOG("key code=%d,value%d\n", event.code, event.value);
+//                              LOG("<user_interface> key code = %d (%s), value = %d \n",
 //                                     event.code, codename(event.type, event.code), event.value);
                                 gKeyPressed = True;
                                 gKeyLongPressed = False;  /* long press flag, handle in the function key_long_press_thread_routine */
@@ -498,10 +524,10 @@ void *key_event_monitor_thread(void *arg)
                         {
                             /*so far, only handle the case of one key press, if other key release, don't care it*/
                             if (gKeyValueRecord == event.code) {
-                                //                             printf("<user_interface> key code = %d (%s), value = %d \n",
+                                //                             LOG("<user_interface> key code = %d (%s), value = %d \n",
 //                              event.code, codename(event.type, event.code), event.value);
 
-                                printf(" KEY released \n");
+                                LOG(" KEY released \n");
                                 gKeyPressed = False;    /* long press flag clear */
                                 gKeyValueRecord = KEY_RECORD_MASK;
                                 if (!gKeyLongPressed) {
@@ -528,7 +554,7 @@ void SendKey(int value){
 
     if (AAWANTSendPacket(server_sock, (char *) &stPacketHead) < 0) {
         //AIcom_SetErrorMsg(ERROR_SOCKET_WRITE, NULL, NULL);
-        printf("Send packet err,server_sock=%d\n",server_sock);
+        LOG("Send packet err,server_sock=%d\n",server_sock);
         // return -1;
     };
 }
@@ -566,12 +592,12 @@ void *KeyEventMonitorThread2(void *arg)
     gwd = inotify_add_watch(gufds[0].fd, INPUT_DEVICE_PATH, IN_DELETE | IN_CREATE);
     if (gwd < 0)
     {
-        printf("could not add watch for %s, %s\n", INPUT_DEVICE_PATH, strerror(errno));
+        LOG("could not add watch for %s, %s\n", INPUT_DEVICE_PATH, strerror(errno));
     }
     res = scan_dir(INPUT_DEVICE_PATH);
     if (res < 0)
     {
-        printf("scan dir failed for %s\n", INPUT_DEVICE_PATH);
+        LOG("scan dir failed for %s\n", INPUT_DEVICE_PATH);
     }
 
     while (1)
@@ -594,7 +620,7 @@ void *KeyEventMonitorThread2(void *arg)
                     res = read(gufds[i].fd, &event, sizeof(event));
                     if (res < (int)sizeof(event))
                     {
-                        printf("could not get event\n");
+                        LOG("could not get event\n");
                     }
                     /**
                      * 按键处理
@@ -608,11 +634,11 @@ void *KeyEventMonitorThread2(void *arg)
                          */
                         if (1 == event.value)   /* key press process */
                         {
-                            //mprintf("[%s]==>key press: code=%d,value=%d\n",__FUNCTION__,event.code,event.value);
+                            //LOG("[%s]==>key press: code=%d,value=%d\n",__FUNCTION__,event.code,event.value);
                             if ((KEY_MICMUTE == event.code ||
                                  KEY_POWER == event.code) && KEY_RECORD_MASK == gKeyValueRecord)
                             {
-                                mprintf("[%s]==>key code=%d,value%d\n",__FUNCTION__,event.code,event.value);
+                                LOG("key code=%d,value%d\n",event.code,event.value);
 
                                 gKeyPressed = True;
                                 gKeyLongPressed = False;  /* long press flag, handle in the function key_long_press_thread_routine */
@@ -633,11 +659,11 @@ void *KeyEventMonitorThread2(void *arg)
                         }
                         else    /* event.value=0,按键释放处理 */
                         {
-                            mprintf("[%s]==>key press: code=%d,value=%d\n",__FUNCTION__,event.code,event.value);
+                            LOG("key press: code=%d,value=%d\n",event.code,event.value);
                             /*so far, only handle the case of one key press, if other key release, don't care it*/
                             if (KEY_MICMUTE == event.code)
                             {
-                                printf(" KEY released \n");
+                                LOG(" KEY released \n");
                                 gKeyPressed = False;    /* long press flag clear */
                                 gKeyValueRecord = KEY_RECORD_MASK;
                                 /**
@@ -648,11 +674,11 @@ void *KeyEventMonitorThread2(void *arg)
                                 if (gKeyLongPressed)
                                 {
                                     //长按联网配置
-                                    printf("long press\n");
+                                    LOG("long press\n");
                                    // AAWANTSendPacketHead(server_sock, PKT_SYSTEM_READY_NETCONFIG);
                                 } else{
                                     //短按唤醒
-                                    printf("short press,server_sock=%d\n",server_sock);
+                                    LOG("short press,server_sock=%d\n",server_sock);
                                     AAWANTSendPacketHead(server_sock, PKT_SYSTEM_WAKEUP);
                                 }
                                 //触控暂时按发键值来处理，后续不排除按键趋势算法这边做
@@ -663,7 +689,7 @@ void *KeyEventMonitorThread2(void *arg)
                                      KEY_I==event.code||KEY_J==event.code||
                                      KEY_K==event.code||KEY_L==event.code)
                             {
-                                mprintf("[%s]==>key release: code=%d,value=%d\n",__FUNCTION__,event.code,event.value);
+                                LOG("key release: code=%d,value=%d\n",event.code,event.value);
                                 SendKey(event.code);
                             }
                         }
@@ -680,7 +706,7 @@ int create_KeyThread(){
     FUNC_START
     int ret=pthread_create(&keythread,NULL,KeyEventMonitorThread2,NULL);
     if(ret){
-        printf("creat key thread fail\n");
+        LOG("creat key thread fail\n");
     }
     FUNC_END
     return 0;
@@ -776,13 +802,13 @@ void *Customer(void *arg){
     memset(&ledData,0,sizeof(struct LedData));
     int sw=0;
     while (1){
-        printf("Change Led Status\n");
+        LOG("Change Led Status\n");
         pthread_cond_wait(&pcond,&pmutex);
         rb_read(rb,&ledData,sizeof(struct LedData));
-        printf("LedData:flags=%d,cmd=%d\n",ledData.flags,ledData.cmd);
+        LOG("LedData:flags=%d,cmd=%d\n",ledData.flags,ledData.cmd);
         if(ledData.flags==1){
                    if (ioctl(blns_fd, ledData.cmd, &sw) < 0) {
-                       printf("IOCTL DATA FAIL...\n");
+                       LOG("IOCTL DATA FAIL...\n");
                    }
 
         } else if(ledData.flags==2){
@@ -804,17 +830,17 @@ int write_blns(int fd, int data)
     int ret = 0;
     if(fd < 0 )
     {
-        printf("OPEN DEVICE FAIL...\n");
+        LOG("OPEN DEVICE FAIL...\n");
         return -errno;
     }
 
 #ifdef DEBUG_
-    printf("write blns data -> %d", data);
+    LOG("write blns data -> %d", data);
 #endif
     ret = write(fd, &data, sizeof(int));
     if(ret < 0)
     {
-        printf("WRITE DATA FAIL...");
+        LOG("WRITE DATA FAIL...");
         return -errno;
     }
 
@@ -826,10 +852,10 @@ void *Led_Ctrl(void *arg){
     int sw = 0;
     while (1){
         pthread_cond_wait(&lcond,&lmutex);
-        printf("Led_Ctrl\n");
+        LOG("Led_Ctrl\n");
         if(ledflags==1){
             if(ioctl(blns_fd, ledCmd, &sw) < 0) {
-                printf("IOCTL DATA FAIL...\n");
+                LOG("IOCTL DATA FAIL...\n");
             }
         } else if(ledflags==0){
             write_blns(blns_fd,ledValue);
@@ -849,23 +875,25 @@ void LedInit()
     blns_fd=open(LED_DEVICE_PATH,O_RDWR);
 
     if(blns_fd<0) {
-        printf("open blns failed\n");
+        LOG("open blns failed\n");
     } else{
-        printf("blns fd=%d\n",blns_fd);
+        LOG("blns fd=%d\n",blns_fd);
     }
 
     if (ioctl(blns_fd, AW9523B_IO_OFF, &sw) < 0) {
-        printf("IOCTL DATA FAIL...\n");
+        LOG("IOCTL DATA FAIL...\n");
     }
     rb=CreateRingBuffer(sizeof(struct LedData)*6);
     ret = pthread_create(&ledPid, NULL, Customer, NULL);
     if (ret != 0)
     {
-        printf("create Led pthread failed.\n");
+        LOG("create Led pthread failed.\n");
     }
     FUNC_END
 }
 
+
+#define RUN_PEPRIP_LOG_FILE "Perip.log"
 int  main(int argc, char *argv[])
 {
     char			sService[30],sLog[300],sServerIP[30];
@@ -878,21 +906,22 @@ int  main(int argc, char *argv[])
     AIcom_ChangeToDaemon();
 
     // 重定向输出
-    //SetTraceFile((char *)"KEYEVENT",(char *)CONFIG_FILE);
+    SetTraceFile((char *)"KEYEVENT",(char *)CONFIG_FILE);
 
     /* 与主进程建立联接 */
     char *sMsg = AIcom_GetConfigString((char *)"Config", (char *)"Socket",(char *)CONFIG_FILE);
     if(sMsg==NULL) {
-        printf("Fail to get Socket in %s!\n", CONFIG_FILE);
+        LOG("Fail to get Socket in %s!\n", CONFIG_FILE);
         return(AI_NG);
     };
     strcpy(sService,sMsg);
 
     server_sock=AIEU_DomainEstablishConnection(sService);
-    printf("server_sock=%d\n",server_sock);
+    //LOG("server_sock=%d\n",server_sock);
     if(server_sock<0) {
         sprintf(sLog,"KEYEVENT Process : AIEU_DomainEstablishConnection %s error!",sService);
-        WriteLog((char *)RUN_TIME_LOG_FILE,sLog);
+        //WriteLog((char *)RUN_PEPRIP_LOG_FILE,sLog);
+        WLog(sLog);
         return AI_NG;
     };
 
@@ -917,7 +946,7 @@ int  main(int argc, char *argv[])
     static int x=0;
     for(;;) {
         if(server_sock==NULL){
-            printf("server_sock is null\n");
+            LOG("server_sock is null\n");
         }
         FD_ZERO(&readmask);
         FD_SET(server_sock,&readmask);
@@ -938,12 +967,12 @@ int  main(int argc, char *argv[])
             char *lpInBuffer=AAWANTGetPacket(server_sock, &nError);
             if(lpInBuffer==NULL) {
                 if(nError == EINTR ||nError == 0) {  /* 因信号而中断 */
-                    printf("signal interrupt\n");
+                    LOG("signal interrupt\n");
                     continue;
                 };
                 /* 主进程关闭了联接，本程序也终止！ */
-                //  WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
-                printf("close sock\n");
+                //  WriteLog((char *)RUN_PEPRIP_LOG_FILE,(char *)"Upgrade Process : Receive disconnect info from Master Process!");
+                LOG("close sock\n");
                 AIEU_TCPClose(server_sock);
                 return -1;
             };
@@ -952,13 +981,15 @@ int  main(int argc, char *argv[])
             switch (pHead->iPacketID) {
                     //系统状态灯光
                 case PKT_BLNS_SYSTEM_STATUS: {
-                    printf("Get PKT_BLNS_SYSTEM_STATUS \n");
+                    LOG("Get PKT_BLNS_SYSTEM_STATUS \n");
 
                     System_Blns_Status blns;
                     int cmd;
                     int sw = 0;
                     //blns = (System_Blns_Status *) (lpInBuffer + sizeof(PacketHead));
                     blns = (System_Blns_Status ) pHead->iRecordNum;
+                    sprintf(sLog,"PKT_BLNS_SYSTEM_STATUS:%d",blns);
+                    WLog(sLog);
                     //printf("Get PKT_BLNS_VALUE_STATUS =%d\n", blns);
                     if (blns == BLNS_ERROR_STATUS) {
                         cmd = AW9523B_IO_ERROR;
@@ -977,22 +1008,22 @@ int  main(int argc, char *argv[])
                     } else if (blns == BLNS_PLAY_STATUS) {
                         cmd = AW9523B_IO_PLAY;
                     } else if (blns == BLNS_NET_CONFIG_STATUS) {
-                        printf("BLNS_NET_CONFIG_STATUS\n");
+                        LOG("BLNS_NET_CONFIG_STATUS\n");
                         cmd = AW9523B_IO_NETCONFIG;
                     } else if (blns == BLNS_UPDATE_STATUS) {
-                        printf("BLNS_UPDATE_STATUS\n");
+                        LOG("BLNS_UPDATE_STATUS\n");
                         cmd = AW9523B_IO_UPDATE;
                     } else if (blns == BLNS_TEST_STATUS) {
-                        printf("BLNS_TEST_STATUS\n");
+                        LOG("BLNS_TEST_STATUS\n");
                         cmd = AW9523B_IO_TEST;
                     } else if (blns == BLNS_SWITCH_PLAY_STATUS) {
-                        printf("BLNS_SWITCH_PLAY_STATUS\n");
+                        LOG("BLNS_SWITCH_PLAY_STATUS\n");
                         cmd = AW9523B_IO_SWITCH_PLAY;
                     }
 
                     /*
                     if (ioctl(blns_fd, cmd, &sw) < 0) {
-                        printf("IOCTL DATA FAIL...\n");
+                        LOG("IOCTL DATA FAIL...\n");
                     }
                     */
 
@@ -1015,12 +1046,13 @@ int  main(int argc, char *argv[])
                 }
                     //音量控制灯光
                 case PKT_BLNS_VALUE_STATUS: {
-                    printf("Get PKT_BLNS_VALUE_STATUS \n");
+
 
                     int led=0;
                     struct LedData ldata;
                     int count=0;
                     led = (int ) pHead->iRecordNum;
+                    LOG("Get PKT_BLNS_VALUE_STATUS:%d \n",led);
                     //write_blns(blns_fd,led);
                    // pthread_mutex_lock(&pmutex);
                    // ledValue=led;
@@ -1043,8 +1075,8 @@ int  main(int argc, char *argv[])
                 }
 
                 default:
-                    //WriteLog((char *)RUN_TIME_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");
-                    printf("upgraded Process : Receive unknown message from Master Process!\n");
+                    //WriteLog((char *)RUN_PEPRIP_LOG_FILE,(char *)"upgraded Process : Receive unknown message from Master Process!");
+                    LOG("upgraded Process : Receive unknown message from Master Process!\n");
                     break;
             };
             free(lpInBuffer);

@@ -299,7 +299,7 @@ void test_all() {
                 System_Blns_Status blns;
                 if (word != NULL) {
                     if (strcmp(word, "401") == 0) { blns = BLNS_ERROR_STATUS; }
-                    else if (strcmp(word, "402") == 0) { blns = BLNS_VOLUME_STATUS; }
+                    //else if (strcmp(word, "402") == 0) { blns = BLNS_VOLUME_STATUS; }
                     else if (strcmp(word, "403") == 0) { blns = BLNS_OFF_STATUS; }
                     else if (strcmp(word, "404") == 0) { blns = BLNS_STARTUP_STATUS; }
                     else if (strcmp(word, "405") == 0) { blns = BLNS_WAKEUP_STATUS; }

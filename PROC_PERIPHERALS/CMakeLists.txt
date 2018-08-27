@@ -20,8 +20,8 @@ TARGET_LINK_LIBRARIES(ProcPerip aawant pthread )
 #INCLUDE_DIRECTORIES(../include)
 #INCLUDE_DIRECTORIES(include)
 
-ADD_EXECUTABLE(keytest test/test.cpp)
+#ADD_EXECUTABLE(keytest test/test.cpp)
 #ADD_EXECUTABLE(testd test/test.c src/user_interface_key.c)
-TARGET_LINK_LIBRARIES(keytest pthread)
+#TARGET_LINK_LIBRARIES(keytest pthread)
 
 
